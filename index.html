@@ -3,136 +3,93 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aqui Tem Comida na Chapa - Cardápio Digital</title>
+  <title>Comida na Chapa - Cardápio Digital</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <header>
-    <div class="header-content">
-      <!-- Clique 3 vezes no título para abrir o relatório -->
-      <h1 onclick="secretClick()" style="cursor: pointer;" title="Área Restrita">Aqui Tem Comida na Chapa</h1>
-      <p>Encomende sua Marmita</p>
-      <div id="status-badge" class="status-badge">Verificando...</div>
-    </div>
+    <!-- Clique triplo no título abre o painel restrito -->
+    <h1 onclick="secretClick()" style="cursor: pointer;">Comida na Chapa</h1>
+    <div id="status-badge" class="status-badge open">🟢 Aberto para Pedidos</div>
   </header>
 
   <main class="container">
+    <h2>Nosso Cardápio</h2>
 
-    <!-- Card Informações de Entrega -->
-    <section class="card delivery-card">
-      <h2>📍 Entrega / Retirada</h2>
-      <div class="delivery-info">
-        <p>🛵 Entregamos no <strong>Bairro Água Fria</strong> e Pedra Branca.</p>
-        <p class="fee-badge">Taxa de entrega: <strong>R$ 3,00</strong> (Grátis para Retirada)</p>
+    <!-- Marmita Calabresa -->
+    <div class="card">
+      <div class="card-info">
+        <h3>Marmita de Calabresa</h3>
+        <p>Acompanha arroz, salada e farofa.</p>
+        <span class="price">R$ 25,00</span>
       </div>
-    </section>
-
-    <!-- Card Cardápio de Marmitas -->
-    <section class="card">
-      <h2>1. Escolha suas Marmitas</h2>
-      
-      <div class="info-box">
-        📌 <strong>Todas as marmitas acompanham:</strong><br>
-        Arroz, Salada e Farofa.
+      <div class="qty-controls">
+        <button onclick="changeQty('calabresa', -1)">-</button>
+        <span id="qty-calabresa">0</span>
+        <button onclick="changeQty('calabresa', 1)">+</button>
       </div>
+    </div>
 
-      <!-- Item Calabresa -->
-      <div class="menu-item">
-        <img src="marmita de calabresa.png" alt="Marmita de Calabresa" class="item-img">
-        <div class="item-details">
-          <h3 class="item-title">Marmita de Calabresa</h3>
-          <p class="item-desc">Calabresa acebolada na chapa + acompanhamentos.</p>
-          <span class="item-price">R$ 25,00</span>
-        </div>
-        <div class="controls">
-          <button class="btn-qty" onclick="changeQty('calabresa', -1)">-</button>
-          <span class="qty" id="qty-calabresa">0</span>
-          <button class="btn-qty" onclick="changeQty('calabresa', 1)">+</button>
-        </div>
+    <!-- Marmita Carne -->
+    <div class="card">
+      <div class="card-info">
+        <h3>Marmita de Carne</h3>
+        <p>Acompanha arroz, salada e farofa.</p>
+        <span class="price">R$ 25,00</span>
       </div>
-
-      <!-- Item Carne -->
-      <div class="menu-item">
-        <img src="marmita de carne.png" alt="Marmita de Carne" class="item-img">
-        <div class="item-details">
-          <h3 class="item-title">Marmita de Carne</h3>
-          <p class="item-desc">Carne suculenta preparada na chapa + acompanhamentos.</p>
-          <span class="item-price">R$ 25,00</span>
-        </div>
-        <div class="controls">
-          <button class="btn-qty" onclick="changeQty('carne', -1)">-</button>
-          <span class="qty" id="qty-carne">0</span>
-          <button class="btn-qty" onclick="changeQty('carne', 1)">+</button>
-        </div>
+      <div class="qty-controls">
+        <button onclick="changeQty('carne', -1)">-</button>
+        <span id="qty-carne">0</span>
+        <button onclick="changeQty('carne', 1)">+</button>
       </div>
+    </div>
 
-      <!-- Item Frango -->
-      <div class="menu-item">
-        <img src="marmita de frango.png" alt="Marmita de Frango" class="item-img">
-        <div class="item-details">
-          <h3 class="item-title">Marmita de Frango</h3>
-          <p class="item-desc">Peito de frango grelhado na chapa + acompanhamentos.</p>
-          <span class="item-price">R$ 25,00</span>
-        </div>
-        <div class="controls">
-          <button class="btn-qty" onclick="changeQty('frango', -1)">-</button>
-          <span class="qty" id="qty-frango">0</span>
-          <button class="btn-qty" onclick="changeQty('frango', 1)">+</button>
-        </div>
+    <!-- Marmita Frango -->
+    <div class="card">
+      <div class="card-info">
+        <h3>Marmita de Frango</h3>
+        <p>Acompanha arroz, salada e farofa.</p>
+        <span class="price">R$ 25,00</span>
       </div>
-
-      <!-- Resumo dos Valores -->
-      <div class="summary-box">
-        <div class="summary-row">
-          <span>Subtotal dos itens:</span>
-          <span id="subtotal-price">R$ 0,00</span>
-        </div>
-        <div class="summary-row">
-          <span>Taxa de Entrega:</span>
-          <span id="delivery-fee">R$ 0,00</span>
-        </div>
-        <div class="summary-row total">
-          <span>Valor Total:</span>
-          <span id="total-price">R$ 0,00</span>
-        </div>
+      <div class="qty-controls">
+        <button onclick="changeQty('frango', -1)">-</button>
+        <span id="qty-frango">0</span>
+        <button onclick="changeQty('frango', 1)">+</button>
       </div>
-    </section>
+    </div>
 
-    <!-- Card Dados do Pedido -->
-    <section class="card">
-      <h2>2. Finalizar Pedido</h2>
-      
+    <!-- Formulário de Finalização do Pedido -->
+    <section class="checkout-form">
+      <h2>Dados para Pedido</h2>
+
       <div class="form-group">
-        <label for="name">Seu Nome *</label>
+        <label for="name">Seu Nome:</label>
         <input type="text" id="name" placeholder="Digite seu nome completo">
       </div>
 
       <div class="form-group">
-        <label for="order-type">Tipo de Pedido *</label>
+        <label for="order-type">Tipo de Pedido:</label>
         <select id="order-type" onchange="toggleOrderType()">
-          <option value="Entrega">Entrega em Água Fria (Taxa de R$ 3,00)</option>
-          <option value="Retirada">Retirar no Estabelecimento (Grátis)</option>
+          <option value="Entrega">🛵 Entrega</option>
+          <option value="Retirada">🛍️ Retirada no Local</option>
         </select>
       </div>
 
-      <div class="form-group" id="address-group">
-        <label for="address">Endereço Completo (Bairro Água Fria) *</label>
-        <input type="text" id="address" placeholder="Rua, número e ponto de referência">
-      </div>
-      <div id="address-group">
-  <label for="bairro">Bairro / Região de Entrega:</label>
-  <select id="bairro" onchange="updateTotal()">
-    <option value="Água Fria">Água Fria (R$ 3,00)</option>
-    <option value="Pedra Branca">Pedra Branca (R$ 5,00)</option> <!-- Altere o texto da taxa se o valor for diferente -->
-  </select>
+      <!-- Bloco de Endereço com Seleção de Bairro -->
+      <div id="address-group" class="form-group">
+        <label for="bairro">Bairro / Região de Entrega:</label>
+        <select id="bairro" onchange="updateTotal()">
+          <option value="Água Fria">Água Fria (R$ 3,00)</option>
+          <option value="Pedra Branca">Pedra Branca (R$ 5,00)</option>
+        </select>
 
-  <label for="address">Endereço (Rua, Número, Ponto de Referência):</label>
-  <input type="text" id="address" placeholder="Ex: Rua A, nº 123">
-</div>
+        <label for="address">Endereço (Rua, Número, Ponto de Referência):</label>
+        <input type="text" id="address" placeholder="Ex: Rua A, nº 123">
+      </div>
 
       <div class="form-group">
-        <label for="payment">Forma de Pagamento *</label>
+        <label for="payment">Forma de Pagamento:</label>
         <select id="payment" onchange="togglePayment()">
           <option value="PIX">PIX</option>
           <option value="Cartão">Cartão (Débito/Crédito)</option>
@@ -140,33 +97,40 @@
         </select>
       </div>
 
-      <!-- Bloco Chave PIX -->
-      <div class="info-box" id="pix-info-group" style="background-color: #e8f5e9; border-color: #c8e6c9; color: #2e7d32;">
-        🔑 <strong>Chave PIX:</strong> <code>96984352841</code> (Telefone)<br>
-        <small>Após realizar o pagamento, envie o comprovante no WhatsApp!</small>
+      <!-- Troco para pagamento em dinheiro -->
+      <div id="troco-group" class="form-group" style="display: none;">
+        <label for="troco">Precisa de troco para quanto?</label>
+        <input type="text" id="troco" placeholder="Ex: Troco para R$ 50,00">
       </div>
 
-      <div class="form-group" id="troco-group" style="display: none;">
-        <label for="troco">Troco para quanto?</label>
-        <input type="text" id="troco" placeholder="Ex: Preciso de troco para R$ 50,00">
+      <!-- Informações para pagamento via PIX -->
+      <div id="pix-info-group" class="form-group" style="display: none;">
+        <p class="pix-info">Chave PIX (Celular): <strong>5596984352841</strong></p>
       </div>
 
       <div class="form-group">
-        <label for="notes">Observações</label>
-        <textarea id="notes" rows="2" placeholder="Ex: Sem salada / Ponto da carne / Caprichar na farofa"></textarea>
+        <label for="notes">Observações (opcional):</label>
+        <textarea id="notes" placeholder="Ex: Sem salada, capricha na farofa..."></textarea>
       </div>
 
-      <button id="btn-order" class="btn-order" onclick="sendOrder()">
+      <!-- Resumo do Valor do Pedido -->
+      <div class="total-summary">
+        <p>Subtotal: <span id="subtotal-price">R$ 0,00</span></p>
+        <p>Taxa de Entrega: <span id="delivery-fee">R$ 0,00</span></p>
+        <h3>Total: <span id="total-price">R$ 0,00</span></h3>
+      </div>
+
+      <button id="btn-order" onclick="sendOrder()" class="btn-submit">
         Enviar Pedido pelo WhatsApp
       </button>
     </section>
-
   </main>
-  <!-- Bibliotecas do Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
-<!-- Seu script do site -->
-<script src="script.js"></script>
+  <!-- Conexão com SDKs do Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <!-- Arquivo de scripts do projeto -->
+  <script src="script.js"></script>
 </body>
 </html>
