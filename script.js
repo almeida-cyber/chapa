@@ -12,31 +12,41 @@ const items = {
   frango: { name: "Marmita de Frango", price: 25, qty: 0 }
 };
 
-// --- CONFIGURAÇÃO DO FIREBASE (SUBSTITUA PELOS SEUS DADOS) ---
+// --- CONFIGURAÇÃO DO FIREBASE (COLE AS SUAS CHAVES AQUI) ---
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY_AQUI",
-  authDomain: "seu-projeto.firebaseapp.com",
-  databaseURL: "https://seu-projeto-default-rtdb.firebaseio.com",
-  projectId: "seu-projeto",
-  storageBucket: "seu-projeto.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:abc123def456"
+  // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyD8gwCWqmadN58DwXH5fYh47iI5tZUoAqk",
+  authDomain: "comida-na-chapa.firebaseapp.com",
+  projectId: "comida-na-chapa",
+  storageBucket: "comida-na-chapa.firebasestorage.app",
+  messagingSenderId: "18226994391",
+  appId: "1:18226994391:web:238cf2225ebee38521e492"
 };
 
-// Inicializa o Firebase
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+};
+
+// Inicializa a conexão com a nuvem do Firebase
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 const storeStatusRef = database.ref('loja_aberta');
 
-let lojaAbertaGlobal = true; // Status em tempo real
+let lojaAbertaGlobal = true; // Guarda o status sincronizado
 
-// Escuta alterações do status no Firebase em TEMPO REAL para todos os aparelhos
+// Escuta alterações na nuvem em TEMPO REAL para todos os clientes
 storeStatusRef.on('value', (snapshot) => {
   const status = snapshot.val();
   if (status !== null) {
     lojaAbertaGlobal = status;
   } else {
-    // Se for o primeiro acesso e não houver dados, define como aberta
+    // Na primeira vez, cria a chave como 'aberta' (true)
     storeStatusRef.set(true);
     lojaAbertaGlobal = true;
   }
@@ -126,7 +136,7 @@ function abrirPainelAdmin() {
 function alternarStatusLoja() {
   const novoStatus = !isStoreOpen();
 
-  // Atualiza na nuvem do Firebase para TODOS os clientes
+  // Grava na nuvem para TODOS os aparelhos
   storeStatusRef.set(novoStatus).then(() => {
     if (novoStatus) {
       alert("🟢 Loja ABERTA com sucesso para TODOS os clientes!");
@@ -134,7 +144,7 @@ function alternarStatusLoja() {
       alert("🔴 Loja FECHADA com sucesso para TODOS os clientes!");
     }
   }).catch((error) => {
-    alert("Erro ao alterar status: " + error.message);
+    alert("Erro ao conectar com o Firebase: " + error.message);
   });
 }
 
