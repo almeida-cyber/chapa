@@ -8,7 +8,7 @@ const CONFIG = {
   lojaAbertaManual: true, 
   usarHorarioAutomatico: false,    // Loja continuamente aberta
   horaAbertura: 20,  
-  horaFechamento: 00 
+  horaFechamento: 00,
 };
 
 const items = {
