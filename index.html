@@ -9,7 +9,7 @@
 <body>
 
   <header>
-    <!-- Clique triplo no título abre o painel restrito -->
+    <!-- 3 cliques no título abrem o painel da proprietária -->
     <h1 onclick="secretClick()" style="cursor: pointer;">Comida na Chapa</h1>
     <div id="status-badge" class="status-badge open">🟢 Aberto para Pedidos</div>
   </header>
@@ -19,6 +19,7 @@
 
     <!-- Marmita Calabresa -->
     <div class="card">
+      <img src="img/calabresa.jpg" alt="Marmita de Calabresa" class="card-img">
       <div class="card-info">
         <h3>Marmita de Calabresa</h3>
         <p>Acompanha arroz, salada e farofa.</p>
@@ -33,6 +34,7 @@
 
     <!-- Marmita Carne -->
     <div class="card">
+      <img src="img/carne.jpg" alt="Marmita de Carne" class="card-img">
       <div class="card-info">
         <h3>Marmita de Carne</h3>
         <p>Acompanha arroz, salada e farofa.</p>
@@ -47,6 +49,7 @@
 
     <!-- Marmita Frango -->
     <div class="card">
+      <img src="img/frango.jpg" alt="Marmita de Frango" class="card-img">
       <div class="card-info">
         <h3>Marmita de Frango</h3>
         <p>Acompanha arroz, salada e farofa.</p>
@@ -97,13 +100,11 @@
         </select>
       </div>
 
-      <!-- Troco para pagamento em dinheiro -->
       <div id="troco-group" class="form-group" style="display: none;">
         <label for="troco">Precisa de troco para quanto?</label>
         <input type="text" id="troco" placeholder="Ex: Troco para R$ 50,00">
       </div>
 
-      <!-- Informações para pagamento via PIX -->
       <div id="pix-info-group" class="form-group" style="display: none;">
         <p class="pix-info">Chave PIX (Celular): <strong>5596984352841</strong></p>
       </div>
@@ -113,7 +114,6 @@
         <textarea id="notes" placeholder="Ex: Sem salada, capricha na farofa..."></textarea>
       </div>
 
-      <!-- Resumo do Valor do Pedido -->
       <div class="total-summary">
         <p>Subtotal: <span id="subtotal-price">R$ 0,00</span></p>
         <p>Taxa de Entrega: <span id="delivery-fee">R$ 0,00</span></p>
@@ -126,11 +126,11 @@
     </section>
   </main>
 
-  <!-- Conexão com SDKs do Firebase -->
+  <!-- SDKs do Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
-  <!-- Arquivo de scripts do projeto -->
+  <!-- Arquivo de lógica principal -->
   <script src="script.js"></script>
 </body>
 </html>
