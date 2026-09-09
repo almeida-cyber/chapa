@@ -1,14 +1,9 @@
-// LÓGICA DO CARDÁPIO DIGITAL & PAINEL ADMINISTRATIVO
+// LÓGICA DO CARDÁPIO DIGITAL & PAINEL ADMINISTRATIVO COM FIREBASE
 
 const CONFIG = {
   whatsappNumber: "5596984352841", // WhatsApp da Vendedora
   taxaEntrega: 3.00,               // Taxa em R$
   senhaAdmin: "1234",              // Senha da proprietária
-  
-  lojaAbertaManual: false,         // 👈 'false' = FECHADA globalmente / 'true' = ABERTA
-  usarHorarioAutomatico: false,    
-  horaAbertura: 10,  
-  horaFechamento: 22 
 };
 
 const items = {
@@ -17,20 +12,41 @@ const items = {
   frango: { name: "Marmita de Frango", price: 25, qty: 0 }
 };
 
+// --- CONFIGURAÇÃO DO FIREBASE (SUBSTITUA PELOS SEUS DADOS) ---
+const firebaseConfig = {
+  apiKey: "SUA_API_KEY_AQUI",
+  authDomain: "seu-projeto.firebaseapp.com",
+  databaseURL: "https://seu-projeto-default-rtdb.firebaseio.com",
+  projectId: "seu-projeto",
+  storageBucket: "seu-projeto.appspot.com",
+  messagingSenderId: "1234567890",
+  appId: "1:1234567890:web:abc123def456"
+};
+
+// Inicializa o Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+const storeStatusRef = database.ref('loja_aberta');
+
+let lojaAbertaGlobal = true; // Status em tempo real
+
+// Escuta alterações do status no Firebase em TEMPO REAL para todos os aparelhos
+storeStatusRef.on('value', (snapshot) => {
+  const status = snapshot.val();
+  if (status !== null) {
+    lojaAbertaGlobal = status;
+  } else {
+    // Se for o primeiro acesso e não houver dados, define como aberta
+    storeStatusRef.set(true);
+    lojaAbertaGlobal = true;
+  }
+  updateStoreStatus();
+});
+
 // --- GERENCIAMENTO DE STATUS DA LOJA ---
 
 function isStoreOpen() {
-  // Trava Mestra: Se no código estiver false, fecha IMEDIATAMENTE para todos os clientes no mundo
-  if (CONFIG.lojaAbertaManual === false) {
-    return false;
-  }
-
-  const statusSalvo = localStorage.getItem('loja_aberta');
-  if (statusSalvo !== null) {
-    return statusSalvo === 'true';
-  }
-
-  return true;
+  return lojaAbertaGlobal;
 }
 
 function updateStoreStatus() {
@@ -108,24 +124,25 @@ function abrirPainelAdmin() {
 }
 
 function alternarStatusLoja() {
-  const estaAberta = isStoreOpen();
-  const novoStatus = !estaAberta;
+  const novoStatus = !isStoreOpen();
 
-  localStorage.setItem('loja_aberta', novoStatus);
-  updateStoreStatus();
-
-  if (novoStatus) {
-    alert("🟢 Loja ABERTA com sucesso neste aparelho!");
-  } else {
-    alert("🔴 Loja FECHADA com sucesso neste aparelho!");
-  }
+  // Atualiza na nuvem do Firebase para TODOS os clientes
+  storeStatusRef.set(novoStatus).then(() => {
+    if (novoStatus) {
+      alert("🟢 Loja ABERTA com sucesso para TODOS os clientes!");
+    } else {
+      alert("🔴 Loja FECHADA com sucesso para TODOS os clientes!");
+    }
+  }).catch((error) => {
+    alert("Erro ao alterar status: " + error.message);
+  });
 }
 
 function verFechamentoCaixa() {
   const historico = JSON.parse(localStorage.getItem('vendas_hoje')) || [];
 
   if (historico.length === 0) {
-    alert("Nenhuma venda registrada no expediente atual.");
+    alert("Nenhuma venda registrada neste aparelho no expediente atual.");
     return;
   }
 
@@ -274,7 +291,6 @@ function sendOrder() {
   const fee = orderType === "Entrega" ? CONFIG.taxaEntrega : 0;
   const totalFinal = subtotal + fee;
 
-  // Salva no relatório do expediente
   registrarVenda(subtotal, fee, totalFinal, payment, items);
 
   let message = `*NOVO PEDIDO - COMIDA NA CHAPA*\n\n`;
@@ -308,6 +324,5 @@ function sendOrder() {
 
 // Inicialização da página ao carregar
 document.addEventListener("DOMContentLoaded", () => {
-  updateStoreStatus();
   togglePayment();
 });
