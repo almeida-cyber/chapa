@@ -3,10 +3,10 @@
 const CONFIG = {
   whatsappNumber: "5596984352841", // WhatsApp da Vendedora
   taxasEntrega: {
-    "Água Fria": 3.00,              // Taxa Água Fria
-    "Pedra Branca": 8.00            // 👈 Mude aqui o valor da taxa de Pedra Branca se for diferente
+    "Água Fria": 3.00,
+    "Pedra Branca": 8.00
   },
-  senhaAdmin: "17082005",              // Senha da proprietária
+  senhaAdmin: "17082005"              // Senha da proprietária
 };
 
 const items = {
@@ -15,7 +15,7 @@ const items = {
   frango: { name: "Marmita de Frango", price: 25, qty: 0 }
 };
 
-// --- CONFIGURAÇÃO DO FIREBASE (SUAS CREDENCIAIS REAIS) ---
+// --- CONFIGURAÇÃO DO FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyD8gwCWqmadN58DwXH5fYh47iI5tZUoAqk",
   authDomain: "comida-na-chapa.firebaseapp.com",
@@ -26,12 +26,12 @@ const firebaseConfig = {
   appId: "1:18226994391:web:238cf2225ebee38521e492"
 };
 
-// Inicializa a conexão com a nuvem do Firebase
+// Inicializa a conexão com a nuvem
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 const storeStatusRef = database.ref('loja_aberta');
 
-let lojaAbertaGlobal = true; // Guarda o status sincronizado
+let lojaAbertaGlobal = true;
 
 // Escuta alterações na nuvem em TEMPO REAL para todos os clientes
 storeStatusRef.on('value', (snapshot) => {
@@ -39,7 +39,6 @@ storeStatusRef.on('value', (snapshot) => {
   if (status !== null) {
     lojaAbertaGlobal = status;
   } else {
-    // Na primeira vez, cria a chave como 'aberta' (true)
     storeStatusRef.set(true);
     lojaAbertaGlobal = true;
   }
@@ -143,7 +142,6 @@ function abrirPainelAdmin() {
 function alternarStatusLoja() {
   const novoStatus = !isStoreOpen();
 
-  // Grava na nuvem para TODOS os aparelhos
   storeStatusRef.set(novoStatus).then(() => {
     if (novoStatus) {
       alert("🟢 Loja ABERTA com sucesso para TODOS os clientes!");
@@ -340,7 +338,6 @@ function sendOrder() {
   window.open(url, '_blank');
 }
 
-// Inicialização da página ao carregar
 document.addEventListener("DOMContentLoaded", () => {
   togglePayment();
 });
