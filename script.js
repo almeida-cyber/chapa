@@ -1,343 +1,1194 @@
-// LÓGICA DO CARDÁPIO DIGITAL & PAINEL ADMINISTRATIVO COM FIREBASE
+/*
+ * ============================================================
+ * COMIDA NA CHAPA
+ * SISTEMA DO CLIENTE
+ * ============================================================
+ */
 
-const CONFIG = {
-  whatsappNumber: "5596984352841", // WhatsApp da Vendedora
-  taxasEntrega: {
-    "Água Fria": 3.00,
-    "Pedra Branca": 8.00
-  },
-  senhaAdmin: "17082005"              // Senha da proprietária
-};
+let database = null;
 
-const items = {
-  calabresa: { name: "Marmita de Calabresa", price: 25, qty: 0 },
-  carne: { name: "Marmita de Carne", price: 25, qty: 0 },
-  frango: { name: "Marmita de Frango", price: 25, qty: 0 }
-};
+let lojaAberta = true;
 
-// --- CONFIGURAÇÃO DO FIREBASE ---
-const firebaseConfig = {
-  apiKey: "AIzaSyD8gwCWqmadN58DwXH5fYh47iI5tZUoAqk",
-  authDomain: "comida-na-chapa.firebaseapp.com",
-  databaseURL: "https://comida-na-chapa-default-rtdb.firebaseio.com",
-  projectId: "comida-na-chapa",
-  storageBucket: "comida-na-chapa.firebasestorage.app",
-  messagingSenderId: "18226994391",
-  appId: "1:18226994391:web:238cf2225ebee38521e492"
-};
 
-// Inicializa a conexão com a nuvem
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
-const storeStatusRef = database.ref('loja_aberta');
+/* ============================================================
+   CARRINHO
+   ============================================================ */
 
-let lojaAbertaGlobal = true;
+const carrinho = {};
 
-// Escuta alterações na nuvem em TEMPO REAL para todos os clientes
-storeStatusRef.on('value', (snapshot) => {
-  const status = snapshot.val();
-  if (status !== null) {
-    lojaAbertaGlobal = status;
-  } else {
-    storeStatusRef.set(true);
-    lojaAbertaGlobal = true;
-  }
-  updateStoreStatus();
+Object.keys(CONFIG.produtos).forEach(key => {
+
+  carrinho[key] = 0;
+
 });
 
-// --- GERENCIAMENTO DE STATUS DA LOJA ---
 
-function isStoreOpen() {
-  return lojaAbertaGlobal;
-}
+/* ============================================================
+   INICIALIZAÇÃO
+   ============================================================ */
 
-function updateStoreStatus() {
-  const badge = document.getElementById("status-badge");
-  const btnOrder = document.getElementById("btn-order");
-  const storeOpen = isStoreOpen();
+document.addEventListener(
+  "DOMContentLoaded",
+  () => {
 
-  if (storeOpen) {
-    if (badge) {
-      badge.innerText = "🟢 Aberto para Pedidos";
-      badge.className = "status-badge open";
-    }
-    if (btnOrder) {
-      btnOrder.disabled = false;
-      btnOrder.innerText = "Enviar Pedido pelo WhatsApp";
-    }
-  } else {
-    if (badge) {
-      badge.innerText = "🔴 Fechado no Momento";
-      badge.className = "status-badge closed";
-    }
-    if (btnOrder) {
-      btnOrder.disabled = true;
-      btnOrder.innerText = "Loja Fechada (Fora do Horário)";
-    }
+    inicializarFirebase();
+
+    renderizarCardapio();
+
+    carregarBairros();
+
+    configurarEventos();
+
+    atualizarPagamento();
+
+    atualizarTipoPedido();
+
+    atualizarTotais();
+
   }
-}
+);
 
-// --- CÁLCULO DA TAXA DE ENTREGA POR BAIRRO ---
 
-function getDeliveryFee() {
-  const orderTypeSelect = document.getElementById("order-type");
-  const orderType = orderTypeSelect ? orderTypeSelect.value : "Entrega";
-  
-  if (orderType !== "Entrega") return 0;
+/* ============================================================
+   FIREBASE
+   ============================================================ */
 
-  const bairroSelect = document.getElementById("bairro");
-  const bairro = bairroSelect ? bairroSelect.value : "Água Fria";
-  
-  return CONFIG.taxasEntrega[bairro] || 3.00;
-}
+function inicializarFirebase() {
 
-// --- PAINEL ADMINISTRATIVO SECRETO (3 CLIQUES NO TÍTULO) ---
+  try {
 
-let clickCount = 0;
-let clickTimer = null;
+    if (
+      !firebaseConfig.apiKey ||
+      firebaseConfig.apiKey.startsWith("COLOQUE_")
+    ) {
 
-function secretClick() {
-  clickCount++;
-  if (clickTimer) clearTimeout(clickTimer);
+      console.warn(
+        "Firebase ainda não configurado."
+      );
 
-  if (clickCount >= 3) {
-    clickCount = 0;
-    abrirPainelAdmin();
-  } else {
-    clickTimer = setTimeout(() => {
-      clickCount = 0;
-    }, 1500);
+      atualizarStatusLoja(true);
+
+      return;
+
+    }
+
+
+    firebase.initializeApp(
+      firebaseConfig
+    );
+
+
+    database =
+      firebase.database();
+
+
+    const statusRef =
+      database.ref(
+        "configuracoes/lojaAberta"
+      );
+
+
+    statusRef.on(
+      "value",
+      snapshot => {
+
+        if (snapshot.exists()) {
+
+          lojaAberta =
+            snapshot.val() === true;
+
+        } else {
+
+          statusRef.set(true);
+
+          lojaAberta = true;
+
+        }
+
+
+        atualizarStatusLoja(
+          lojaAberta
+        );
+
+      }
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "Firebase:",
+      error
+    );
+
+    atualizarStatusLoja(true);
+
   }
+
 }
 
-function autenticarDona() {
-  const senhaDigitada = prompt("🔒 Área Restrita da Proprietária.\nDigite sua senha:");
-  if (senhaDigitada !== CONFIG.senhaAdmin) {
-    alert("❌ Senha incorreta ou acesso cancelado.");
-    return false;
-  }
-  return true;
-}
 
-function abrirPainelAdmin() {
-  if (!autenticarDona()) return;
+/* ============================================================
+   CARDÁPIO
+   ============================================================ */
 
-  const statusAtual = isStoreOpen() ? "🟢 ABERTA" : "🔴 FECHADA";
+function renderizarCardapio() {
 
-  const opcao = prompt(
-    `⚙️ PAINEL DA PROPRIETÁRIA\n` +
-    `Status atual da loja: ${statusAtual}\n\n` +
-    `Escolha uma opção:\n` +
-    `1 - Ver Fechamento do Caixa\n` +
-    `2 - ${isStoreOpen() ? "FECHAR a Loja" : "ABRIR a Loja"}`
+  const container =
+    document.getElementById(
+      "menu-list"
+    );
+
+
+  container.innerHTML = "";
+
+
+  Object.entries(
+    CONFIG.produtos
+  ).forEach(
+    ([key, produto]) => {
+
+      const card =
+        document.createElement(
+          "article"
+        );
+
+
+      card.className =
+        "card";
+
+
+      card.innerHTML = `
+
+        <img
+          src="${produto.imagem}"
+          alt="${produto.nome}"
+          class="card-img"
+          onerror="this.src='https://placehold.co/600x400?text=Marmita'"
+        >
+
+        <div class="card-info">
+
+          <span class="product-tag">
+
+            ${
+              produto.disponivel
+                ? "Disponível"
+                : "Indisponível"
+            }
+
+          </span>
+
+          <h3>
+            ${produto.nome}
+          </h3>
+
+          <p>
+            ${produto.descricao}
+          </p>
+
+          <strong class="price">
+            ${formatarMoeda(produto.preco)}
+          </strong>
+
+        </div>
+
+
+        <div class="qty-controls">
+
+          <button
+            type="button"
+            aria-label="Diminuir ${produto.nome}"
+            onclick="alterarQuantidade('${key}', -1)"
+          >
+            −
+          </button>
+
+
+          <span id="qty-${key}">
+            0
+          </span>
+
+
+          <button
+            type="button"
+            aria-label="Aumentar ${produto.nome}"
+            onclick="alterarQuantidade('${key}', 1)"
+            ${
+              !produto.disponivel
+                ? "disabled"
+                : ""
+            }
+          >
+            +
+          </button>
+
+        </div>
+
+      `;
+
+
+      container.appendChild(card);
+
+    }
   );
 
-  if (opcao === "1") {
-    verFechamentoCaixa();
-  } else if (opcao === "2") {
-    alternarStatusLoja();
-  }
 }
 
-function alternarStatusLoja() {
-  const novoStatus = !isStoreOpen();
 
-  storeStatusRef.set(novoStatus).then(() => {
-    if (novoStatus) {
-      alert("🟢 Loja ABERTA com sucesso para TODOS os clientes!");
-    } else {
-      alert("🔴 Loja FECHADA com sucesso para TODOS os clientes!");
-    }
-  }).catch((error) => {
-    alert("Erro ao conectar com o Firebase: " + error.message);
-  });
+/* ============================================================
+   BAIRROS
+   ============================================================ */
+
+function carregarBairros() {
+
+  const select =
+    document.getElementById(
+      "bairro"
+    );
+
+
+  select.innerHTML =
+    Object.entries(
+      CONFIG.taxasEntrega
+    )
+    .map(
+      ([bairro, taxa]) => `
+
+        <option value="${bairro}">
+
+          ${bairro}
+          (${formatarMoeda(taxa)})
+
+        </option>
+
+      `
+    )
+    .join("");
+
 }
 
-function verFechamentoCaixa() {
-  const historico = JSON.parse(localStorage.getItem('vendas_hoje')) || [];
 
-  if (historico.length === 0) {
-    alert("Nenhuma venda registrada neste aparelho no expediente atual.");
-    return;
-  }
+/* ============================================================
+   EVENTOS
+   ============================================================ */
 
-  let totalMarmitas = 0;
-  let valorTotalGeral = 0;
-  let qtdItens = { calabresa: 0, carne: 0, frango: 0 };
-  let valoresPorForma = { PIX: 0, Cartão: 0, Dinheiro: 0 };
+function configurarEventos() {
 
-  historico.forEach(pedido => {
-    valorTotalGeral += pedido.total;
-    
-    if (valoresPorForma[pedido.pagamento] !== undefined) {
-      valoresPorForma[pedido.pagamento] += pedido.total;
-    }
+  document
+    .getElementById("order-type")
+    .addEventListener(
+      "change",
+      () => {
 
-    for (const key in pedido.itens) {
-      const qtd = pedido.itens[key].qty || 0;
-      totalMarmitas += qtd;
-      if (qtdItens[key] !== undefined) {
-        qtdItens[key] += qtd;
+        atualizarTipoPedido();
+
+        atualizarTotais();
+
       }
+    );
+
+
+  document
+    .getElementById("bairro")
+    .addEventListener(
+      "change",
+      atualizarTotais
+    );
+
+
+  document
+    .getElementById("payment")
+    .addEventListener(
+      "change",
+      atualizarPagamento
+    );
+
+
+  document
+    .getElementById("btn-order")
+    .addEventListener(
+      "click",
+      enviarPedido
+    );
+
+
+  document
+    .getElementById("copy-pix")
+    .addEventListener(
+      "click",
+      copiarPix
+    );
+
+
+  document
+    .getElementById("go-checkout")
+    .addEventListener(
+      "click",
+      () => {
+
+        document
+          .querySelector(".checkout-form")
+          .scrollIntoView({
+            behavior: "smooth"
+          });
+
+      }
+    );
+
+
+  document
+    .getElementById("store-name")
+    .textContent =
+      CONFIG.loja.nome;
+
+}
+
+
+/* ============================================================
+   ALTERAR QUANTIDADE
+   ============================================================ */
+
+function alterarQuantidade(
+  key,
+  delta
+) {
+
+  if (!lojaAberta) {
+
+    mostrarFeedback(
+      "A loja está fechada no momento.",
+      "erro"
+    );
+
+    return;
+
+  }
+
+
+  const produto =
+    CONFIG.produtos[key];
+
+
+  if (
+    !produto ||
+    !produto.disponivel
+  ) {
+
+    return;
+
+  }
+
+
+  carrinho[key] =
+    Math.max(
+      0,
+      carrinho[key] + delta
+    );
+
+
+  const quantidade =
+    document.getElementById(
+      `qty-${key}`
+    );
+
+
+  if (quantidade) {
+
+    quantidade.textContent =
+      carrinho[key];
+
+  }
+
+
+  atualizarTotais();
+
+}
+
+
+/* ============================================================
+   TIPO DE PEDIDO
+   ============================================================ */
+
+function atualizarTipoPedido() {
+
+  const entrega =
+    document.getElementById(
+      "order-type"
+    ).value === "Entrega";
+
+
+  document
+    .getElementById(
+      "address-group"
+    )
+    .classList
+    .toggle(
+      "hidden",
+      !entrega
+    );
+
+
+  document
+    .getElementById(
+      "bairro"
+    )
+    .disabled =
+      !entrega;
+
+}
+
+
+/* ============================================================
+   PAGAMENTO
+   ============================================================ */
+
+function atualizarPagamento() {
+
+  const pagamento =
+    document.getElementById(
+      "payment"
+    ).value;
+
+
+  document
+    .getElementById(
+      "troco-group"
+    )
+    .classList
+    .toggle(
+      "hidden",
+      pagamento !== "Dinheiro"
+    );
+
+
+  document
+    .getElementById(
+      "pix-info-group"
+    )
+    .classList
+    .toggle(
+      "hidden",
+      pagamento !== "PIX"
+    );
+
+
+  document
+    .getElementById(
+      "pix-key"
+    )
+    .textContent =
+      CONFIG.contato.pix ||
+      "Não configurada";
+
+}
+
+
+/* ============================================================
+   SUBTOTAL
+   ============================================================ */
+
+function calcularSubtotal() {
+
+  return Object.entries(
+    carrinho
+  ).reduce(
+    (total, [key, quantidade]) => {
+
+      return (
+        total +
+        (
+          CONFIG.produtos[key].preco *
+          quantidade
+        )
+      );
+
+    },
+    0
+  );
+
+}
+
+
+/* ============================================================
+   QUANTIDADE TOTAL
+   ============================================================ */
+
+function quantidadeTotal() {
+
+  return Object
+    .values(carrinho)
+    .reduce(
+      (total, qtd) =>
+        total + qtd,
+      0
+    );
+
+}
+
+
+/* ============================================================
+   TAXA
+   ============================================================ */
+
+function obterTaxaEntrega() {
+
+  if (
+    document.getElementById(
+      "order-type"
+    ).value !== "Entrega"
+  ) {
+
+    return 0;
+
+  }
+
+
+  const bairro =
+    document.getElementById(
+      "bairro"
+    ).value;
+
+
+  return (
+    CONFIG.taxasEntrega[bairro] ||
+    0
+  );
+
+}
+
+
+/* ============================================================
+   ATUALIZAR TOTAIS
+   ============================================================ */
+
+function atualizarTotais() {
+
+  const subtotal =
+    calcularSubtotal();
+
+
+  const quantidade =
+    quantidadeTotal();
+
+
+  const taxa =
+    quantidade > 0
+      ? obterTaxaEntrega()
+      : 0;
+
+
+  const total =
+    subtotal + taxa;
+
+
+  document.getElementById(
+    "items-count"
+  ).textContent =
+    quantidade;
+
+
+  document.getElementById(
+    "subtotal-price"
+  ).textContent =
+    formatarMoeda(subtotal);
+
+
+  document.getElementById(
+    "delivery-fee"
+  ).textContent =
+    formatarMoeda(taxa);
+
+
+  document.getElementById(
+    "total-price"
+  ).textContent =
+    formatarMoeda(total);
+
+
+  document.getElementById(
+    "cart-total"
+  ).textContent =
+    formatarMoeda(total);
+
+
+  document
+    .getElementById("cart-bar")
+    .classList
+    .toggle(
+      "visible",
+      quantidade > 0
+    );
+
+}
+
+
+/* ============================================================
+   ENVIAR PEDIDO
+   ============================================================ */
+
+async function enviarPedido() {
+
+  if (!lojaAberta) {
+
+    mostrarFeedback(
+      "A loja está fechada no momento.",
+      "erro"
+    );
+
+    return;
+
+  }
+
+
+  const quantidade =
+    quantidadeTotal();
+
+
+  if (quantidade === 0) {
+
+    mostrarFeedback(
+      "Adicione pelo menos uma marmita ao pedido.",
+      "erro"
+    );
+
+    return;
+
+  }
+
+
+  const nome =
+    document
+      .getElementById("name")
+      .value
+      .trim();
+
+
+  const tipo =
+    document
+      .getElementById("order-type")
+      .value;
+
+
+  const endereco =
+    document
+      .getElementById("address")
+      .value
+      .trim();
+
+
+  const bairro =
+    document
+      .getElementById("bairro")
+      .value;
+
+
+  const pagamento =
+    document
+      .getElementById("payment")
+      .value;
+
+
+  const troco =
+    document
+      .getElementById("troco")
+      .value
+      .trim();
+
+
+  const observacoes =
+    document
+      .getElementById("notes")
+      .value
+      .trim();
+
+
+  /* VALIDAÇÃO */
+
+  if (!nome) {
+
+    mostrarFeedback(
+      "Informe seu nome.",
+      "erro"
+    );
+
+    document
+      .getElementById("name")
+      .focus();
+
+    return;
+
+  }
+
+
+  if (
+    tipo === "Entrega" &&
+    !endereco
+  ) {
+
+    mostrarFeedback(
+      "Informe o endereço de entrega.",
+      "erro"
+    );
+
+    document
+      .getElementById("address")
+      .focus();
+
+    return;
+
+  }
+
+
+  if (
+    pagamento === "Dinheiro" &&
+    !troco
+  ) {
+
+    mostrarFeedback(
+      "Informe para quanto precisa de troco.",
+      "erro"
+    );
+
+    document
+      .getElementById("troco")
+      .focus();
+
+    return;
+
+  }
+
+
+  const subtotal =
+    calcularSubtotal();
+
+
+  const taxa =
+    obterTaxaEntrega();
+
+
+  const total =
+    subtotal + taxa;
+
+
+  const pedidoId =
+    gerarIdPedido();
+
+
+  /* ITENS */
+
+  const itens = {};
+
+
+  Object.entries(
+    carrinho
+  ).forEach(
+    ([key, qtd]) => {
+
+      if (qtd > 0) {
+
+        itens[key] = {
+
+          nome:
+            CONFIG.produtos[key].nome,
+
+          quantidade:
+            qtd,
+
+          precoUnitario:
+            CONFIG.produtos[key].preco,
+
+          total:
+            CONFIG.produtos[key].preco *
+            qtd
+
+        };
+
+      }
+
     }
-  });
+  );
 
-  let relatorio = `📊 FECHAMENTO DO EXPEDIENTE\n\n`;
-  relatorio += `🍱 Total de Marmitas Vendidas: ${totalMarmitas}\n`;
-  relatorio += ` • Calabresa: ${qtdItens.calabresa}\n`;
-  relatorio += ` • Carne: ${qtdItens.carne}\n`;
-  relatorio += ` • Frango: ${qtdItens.frango}\n\n`;
-  relatorio += `💰 VALOR TOTAL BRUTO: R$ ${valorTotalGeral.toFixed(2).replace('.', ',')}\n`;
-  relatorio += ` • PIX: R$ ${valoresPorForma.PIX.toFixed(2).replace('.', ',')}\n`;
-  relatorio += ` • Cartão: R$ ${valoresPorForma.Cartão.toFixed(2).replace('.', ',')}\n`;
-  relatorio += ` • Dinheiro: R$ ${valoresPorForma.Dinheiro.toFixed(2).replace('.', ',')}\n`;
 
-  alert(relatorio);
+  /* OBJETO DO PEDIDO */
 
-  if (confirm("⚠️ Deseja zerar o caixa para o próximo expediente?")) {
-    localStorage.removeItem('vendas_hoje');
-    alert("Caixa zerado com sucesso!");
-  }
-}
+  const pedido = {
 
-// --- CONTROLE DE PEDIDOS E INTERFACE ---
+    id:
+      pedidoId,
 
-function changeQty(key, delta) {
-  if (!isStoreOpen()) {
-    alert("A loja está fechada no momento.");
-    return;
-  }
+    criadoEm:
+      new Date().toISOString(),
 
-  if (items[key].qty + delta >= 0) {
-    items[key].qty += delta;
-    document.getElementById(`qty-${key}`).innerText = items[key].qty;
-    updateTotal();
-  }
-}
+    status:
+      "Novo",
 
-function toggleOrderType() {
-  const orderType = document.getElementById("order-type").value;
-  const addressGroup = document.getElementById("address-group");
-  
-  if (addressGroup) {
-    addressGroup.style.display = (orderType === "Retirada") ? "none" : "block";
-  }
+    cliente: {
 
-  updateTotal();
-}
+      nome,
 
-function togglePayment() {
-  const payment = document.getElementById("payment").value;
-  const trocoGroup = document.getElementById("troco-group");
-  const pixGroup = document.getElementById("pix-info-group");
+      tipo,
 
-  if (trocoGroup) trocoGroup.style.display = payment === "Dinheiro" ? "block" : "none";
-  if (pixGroup) pixGroup.style.display = payment === "PIX" ? "block" : "none";
-}
+      bairro:
+        tipo === "Entrega"
+          ? bairro
+          : "",
 
-function updateTotal() {
-  let subtotal = 0;
-  let totalQty = 0;
+      endereco:
+        tipo === "Entrega"
+          ? endereco
+          : "Retirada no estabelecimento"
 
-  for (const key in items) {
-    subtotal += items[key].qty * items[key].price;
-    totalQty += items[key].qty;
-  }
+    },
 
-  const fee = totalQty > 0 ? getDeliveryFee() : 0;
-  const total = subtotal + fee;
+    itens,
 
-  document.getElementById("subtotal-price").innerText = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
-  document.getElementById("delivery-fee").innerText = `R$ ${fee.toFixed(2).replace('.', ',')}`;
-  document.getElementById("total-price").innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
-}
+    subtotal,
 
-function registrarVenda(subtotal, taxa, total, pagamento, itensPedido) {
-  const historico = JSON.parse(localStorage.getItem('vendas_hoje')) || [];
-  
-  historico.push({
-    hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-    total: total,
-    pagamento: pagamento,
-    itens: JSON.parse(JSON.stringify(itensPedido))
-  });
+    taxaEntrega:
+      taxa,
 
-  localStorage.setItem('vendas_hoje', JSON.stringify(historico));
-}
+    total,
 
-function sendOrder() {
-  if (!isStoreOpen()) {
-    alert("Desculpe, a loja está fechada no momento.");
-    return;
-  }
+    pagamento,
 
-  let subtotal = 0;
-  let totalItems = 0;
-  let orderText = "";
+    troco:
+      pagamento === "Dinheiro"
+        ? troco
+        : "",
 
-  for (const key in items) {
-    if (items[key].qty > 0) {
-      totalItems += items[key].qty;
-      const itemTotal = items[key].qty * items[key].price;
-      subtotal += itemTotal;
-      orderText += `• ${items[key].qty}x ${items[key].name} (R$ ${itemTotal.toFixed(2).replace('.', ',')})\n`;
+    observacoes
+
+  };
+
+
+  const mensagem =
+    montarMensagemWhatsApp(
+      pedido
+    );
+
+
+  try {
+
+    if (database) {
+
+      await database
+        .ref(
+          `pedidos/${pedidoId}`
+        )
+        .set(pedido);
+
     }
+
+
+    window.open(
+      `https://wa.me/${CONFIG.contato.whatsapp}?text=${encodeURIComponent(mensagem)}`,
+      "_blank"
+    );
+
+
+    mostrarFeedback(
+      `Pedido ${pedidoId} enviado com sucesso!`,
+      "sucesso"
+    );
+
+
+    limparCarrinho();
+
+
+  } catch (error) {
+
+    console.error(error);
+
+
+    mostrarFeedback(
+      "Não foi possível registrar o pedido. Tente novamente.",
+      "erro"
+    );
+
   }
 
-  if (totalItems === 0) {
-    alert("Por favor, adicione pelo menos uma marmita ao seu pedido.");
-    return;
-  }
+}
 
-  const name = document.getElementById("name").value.trim();
-  const orderType = document.getElementById("order-type").value;
-  const address = document.getElementById("address").value.trim();
-  const bairroSelect = document.getElementById("bairro");
-  const bairro = bairroSelect ? bairroSelect.value : "Água Fria";
-  const payment = document.getElementById("payment").value;
-  const troco = document.getElementById("troco").value.trim();
-  const notes = document.getElementById("notes").value.trim();
 
-  if (!name || (orderType === "Entrega" && !address)) {
-    alert("Por favor, preencha seu nome e o endereço de entrega.");
-    return;
-  }
+/* ============================================================
+   WHATSAPP
+   ============================================================ */
 
-  const fee = orderType === "Entrega" ? getDeliveryFee() : 0;
-  const totalFinal = subtotal + fee;
+function montarMensagemWhatsApp(
+  pedido
+) {
 
-  registrarVenda(subtotal, fee, totalFinal, payment, items);
+  let itensTexto = "";
 
-  let message = `*NOVO PEDIDO - COMIDA NA CHAPA*\n\n`;
-  message += `*Tipo de Pedido:* ${orderType === "Entrega" ? "🛵 Entrega" : "🛍️ Retirada no Local"}\n`;
-  message += `*Cliente:* ${name}\n`;
-  
-  if (orderType === "Entrega") {
-    message += `*Bairro:* ${bairro}\n`;
-    message += `*Endereço:* ${address}\n\n`;
+
+  Object.values(
+    pedido.itens
+  ).forEach(
+    item => {
+
+      itensTexto +=
+        `• ${item.quantidade}x ${item.nome} — ${formatarMoeda(item.total)}\n`;
+
+    }
+  );
+
+
+  return `*NOVO PEDIDO - ${CONFIG.loja.nome.toUpperCase()}*
+
+*Pedido:* ${pedido.id}
+*Cliente:* ${pedido.cliente.nome}
+*Tipo:* ${
+  pedido.cliente.tipo === "Entrega"
+    ? "🛵 Entrega"
+    : "🛍️ Retirada"
+}
+
+${
+  pedido.cliente.tipo === "Entrega"
+    ? `*Bairro:* ${pedido.cliente.bairro}
+*Endereço:* ${pedido.cliente.endereco}
+`
+    : ""
+}
+
+*ITENS:*
+${itensTexto}
+*Acompanhamentos:* Arroz, Salada e Farofa
+
+*Subtotal:* ${formatarMoeda(pedido.subtotal)}
+*Taxa de entrega:* ${formatarMoeda(pedido.taxaEntrega)}
+*TOTAL:* ${formatarMoeda(pedido.total)}
+
+*Pagamento:* ${pedido.pagamento}
+${
+  pedido.troco
+    ? `*Troco para:* ${pedido.troco}
+`
+    : ""
+}
+${
+  pedido.observacoes
+    ? `*Observações:* ${pedido.observacoes}`
+    : ""
+}`;
+
+}
+
+
+/* ============================================================
+   LIMPAR CARRINHO
+   ============================================================ */
+
+function limparCarrinho() {
+
+  Object.keys(
+    carrinho
+  ).forEach(
+    key => {
+
+      carrinho[key] = 0;
+
+
+      const el =
+        document.getElementById(
+          `qty-${key}`
+        );
+
+
+      if (el) {
+
+        el.textContent = "0";
+
+      }
+
+    }
+  );
+
+
+  atualizarTotais();
+
+}
+
+
+/* ============================================================
+   STATUS DA LOJA
+   ============================================================ */
+
+function atualizarStatusLoja(
+  aberta
+) {
+
+  lojaAberta =
+    aberta;
+
+
+  const badge =
+    document.getElementById(
+      "status-badge"
+    );
+
+
+  const button =
+    document.getElementById(
+      "btn-order"
+    );
+
+
+  if (aberta) {
+
+    badge.textContent =
+      "🟢 Aberto para pedidos";
+
+    badge.className =
+      "status-badge open";
+
+
+    button.disabled =
+      false;
+
+
+    button.textContent =
+      "📲 Enviar pedido pelo WhatsApp";
+
   } else {
-    message += `*Endereço:* Retirada no Estabelecimento\n\n`;
+
+    badge.textContent =
+      "🔴 Fechado no momento";
+
+    badge.className =
+      "status-badge closed";
+
+
+    button.disabled =
+      true;
+
+
+    button.textContent =
+      "🔒 Loja fechada";
+
   }
 
-  message += `*ITENS DO PEDIDO:*\n${orderText}\n`;
-  message += `*Acompanhamentos:* Arroz, Salada e Farofa\n\n`;
-  message += `*Subtotal:* R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
-  message += `*Taxa de Entrega:* R$ ${fee.toFixed(2).replace('.', ',')}\n`;
-  message += `*TOTAL FINAL:* R$ ${totalFinal.toFixed(2).replace('.', ',')}\n\n`;
-  message += `*Forma de Pagamento:* ${payment}\n`;
-  
-  if (payment === "Dinheiro" && troco) {
-    message += `*Troco para:* ${troco}\n`;
-  }
-  
-  if (notes) {
-    message += `*Observações:* ${notes}\n`;
-  }
-
-  const url = `https://wa.me/${CONFIG.whatsappNumber}?text=${encodeURIComponent(message)}`;
-  window.open(url, '_blank');
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  togglePayment();
-});
+
+/* ============================================================
+   COPIAR PIX
+   ============================================================ */
+
+async function copiarPix() {
+
+  try {
+
+    await navigator
+      .clipboard
+      .writeText(
+        CONFIG.contato.pix
+      );
+
+
+    mostrarFeedback(
+      "Chave PIX copiada!",
+      "sucesso"
+    );
+
+
+  } catch {
+
+    mostrarFeedback(
+      "Não foi possível copiar automaticamente.",
+      "erro"
+    );
+
+  }
+
+}
+
+
+/* ============================================================
+   ID DO PEDIDO
+   ============================================================ */
+
+function gerarIdPedido() {
+
+  const data =
+    new Date();
+
+
+  const parteData =
+    data
+      .toISOString()
+      .slice(0, 10)
+      .replaceAll("-", "");
+
+
+  const aleatorio =
+    Math.floor(
+      1000 +
+      Math.random() * 9000
+    );
+
+
+  return `PED-${parteData}-${aleatorio}`;
+
+}
+
+
+/* ============================================================
+   MOEDA
+   ============================================================ */
+
+function formatarMoeda(
+  valor
+) {
+
+  return Number(
+    valor || 0
+  ).toLocaleString(
+    "pt-BR",
+    {
+      style: "currency",
+      currency: "BRL"
+    }
+  );
+
+}
+
+
+/* ============================================================
+   FEEDBACK
+   ============================================================ */
+
+function mostrarFeedback(
+  texto,
+  tipo
+) {
+
+  const el =
+    document.getElementById(
+      "order-feedback"
+    );
+
+
+  el.textContent =
+    texto;
+
+
+  el.className =
+    `feedback ${tipo}`;
+
+
+  setTimeout(
+    () => {
+
+      el.textContent =
+        "";
+
+      el.className =
+        "feedback";
+
+    },
+    5000
+  );
+
+}
