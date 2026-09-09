@@ -1,14 +1,14 @@
-// LÓGICA DO CARDÁPIO DIGITAL
+// LÓGICA DO CARDÁPIO DIGITAL & PAINEL ADMINISTRATIVO
 
 const CONFIG = {
   whatsappNumber: "5596984352841", // WhatsApp da Vendedora
   taxaEntrega: 3.00,               // Taxa em R$
-  senhaAdmin: "17082005",              // Senha da proprietária para ver o caixa
+  senhaAdmin: "1234",              // Senha da proprietária
   
-  lojaAbertaManual: true, 
-  usarHorarioAutomatico: false,    // Loja continuamente aberta
-  horaAbertura: 20,  
-  horaFechamento: 00,
+  lojaAbertaManual: true,          // Status padrão inicial
+  usarHorarioAutomatico: false,    
+  horaAbertura: 10,  
+  horaFechamento: 22 
 };
 
 const items = {
@@ -17,35 +17,35 @@ const items = {
   frango: { name: "Marmita de Frango", price: 25, qty: 0 }
 };
 
-// Verifica se a loja está aberta
+// --- GERENCIAMENTO DE STATUS DA LOJA ---
+
 function isStoreOpen() {
-  if (!CONFIG.lojaAbertaManual) return false;
-
-  if (CONFIG.usarHorarioAutomatico) {
-    const now = new Date();
-    const currentHour = now.getHours();
-    return currentHour >= CONFIG.horaAbertura && currentHour < CONFIG.horaFechamento;
+  const statusSalvo = localStorage.getItem('loja_aberta');
+  if (statusSalvo !== null) {
+    return statusSalvo === 'true';
   }
-
-  return true;
+  return CONFIG.lojaAbertaManual;
 }
 
-// Atualiza o aviso de status na tela
 function updateStoreStatus() {
   const badge = document.getElementById("status-badge");
   const btnOrder = document.getElementById("btn-order");
   const storeOpen = isStoreOpen();
 
   if (storeOpen) {
-    badge.innerText = "🟢 Aberto para Pedidos";
-    badge.className = "status-badge open";
+    if (badge) {
+      badge.innerText = "🟢 Aberto para Pedidos";
+      badge.className = "status-badge open";
+    }
     if (btnOrder) {
       btnOrder.disabled = false;
       btnOrder.innerText = "Enviar Pedido pelo WhatsApp";
     }
   } else {
-    badge.innerText = "🔴 Fechado no Momento";
-    badge.className = "status-badge closed";
+    if (badge) {
+      badge.innerText = "🔴 Fechado no Momento";
+      badge.className = "status-badge closed";
+    }
     if (btnOrder) {
       btnOrder.disabled = true;
       btnOrder.innerText = "Loja Fechada (Fora do Horário)";
@@ -53,78 +53,8 @@ function updateStoreStatus() {
   }
 }
 
-// Controla os botões + e -
-function changeQty(key, delta) {
-  if (!isStoreOpen()) {
-    alert("A loja está fechada no momento.");
-    return;
-  }
+// --- PAINEL ADMINISTRATIVO SECRETO (3 CLIQUES NO TÍTULO) ---
 
-  if (items[key].qty + delta >= 0) {
-    items[key].qty += delta;
-    document.getElementById(`qty-${key}`).innerText = items[key].qty;
-    updateTotal();
-  }
-}
-
-// Alterna a exibição do endereço conforme o tipo de pedido
-function toggleOrderType() {
-  const orderType = document.getElementById("order-type").value;
-  const addressGroup = document.getElementById("address-group");
-  
-  if (addressGroup) {
-    addressGroup.style.display = (orderType === "Retirada") ? "none" : "block";
-  }
-
-  updateTotal();
-}
-
-// Alterna a exibição do troco e da chave PIX
-function togglePayment() {
-  const payment = document.getElementById("payment").value;
-  const trocoGroup = document.getElementById("troco-group");
-  const pixGroup = document.getElementById("pix-info-group");
-
-  if (trocoGroup) trocoGroup.style.display = payment === "Dinheiro" ? "block" : "none";
-  if (pixGroup) pixGroup.style.display = payment === "PIX" ? "block" : "none";
-}
-
-// Atualiza os valores do resumo considerando entrega ou retirada
-function updateTotal() {
-  let subtotal = 0;
-  let totalQty = 0;
-
-  for (const key in items) {
-    subtotal += items[key].qty * items[key].price;
-    totalQty += items[key].qty;
-  }
-
-  const orderTypeSelect = document.getElementById("order-type");
-  const orderType = orderTypeSelect ? orderTypeSelect.value : "Entrega";
-  const fee = (totalQty > 0 && orderType === "Entrega") ? CONFIG.taxaEntrega : 0;
-  const total = subtotal + fee;
-
-  document.getElementById("subtotal-price").innerText = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
-  document.getElementById("delivery-fee").innerText = `R$ ${fee.toFixed(2).replace('.', ',')}`;
-  document.getElementById("total-price").innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
-}
-
-// --- REGISTRO E FECHAMENTO DE CAIXA SECRETO ---
-
-function registrarVenda(subtotal, taxa, total, pagamento, itensPedido) {
-  const historico = JSON.parse(localStorage.getItem('vendas_hoje')) || [];
-  
-  historico.push({
-    hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-    total: total,
-    pagamento: pagamento,
-    itens: JSON.parse(JSON.stringify(itensPedido))
-  });
-
-  localStorage.setItem('vendas_hoje', JSON.stringify(historico));
-}
-
-// Lógica para clique triplo no título principal
 let clickCount = 0;
 let clickTimer = null;
 
@@ -134,7 +64,7 @@ function secretClick() {
 
   if (clickCount >= 3) {
     clickCount = 0;
-    verFechamentoCaixa();
+    abrirPainelAdmin();
   } else {
     clickTimer = setTimeout(() => {
       clickCount = 0;
@@ -151,9 +81,41 @@ function autenticarDona() {
   return true;
 }
 
-function verFechamentoCaixa() {
+function abrirPainelAdmin() {
   if (!autenticarDona()) return;
 
+  const statusAtual = isStoreOpen() ? "🟢 ABERTA" : "🔴 FECHADA";
+
+  const opcao = prompt(
+    `⚙️ PAINEL DA PROPRIETÁRIA\n` +
+    `Status atual da loja: ${statusAtual}\n\n` +
+    `Escolha uma opção:\n` +
+    `1 - Ver Fechamento do Caixa\n` +
+    `2 - ${isStoreOpen() ? "FECHAR a Loja" : "ABRIR a Loja"}`
+  );
+
+  if (opcao === "1") {
+    verFechamentoCaixa();
+  } else if (opcao === "2") {
+    alternarStatusLoja();
+  }
+}
+
+function alternarStatusLoja() {
+  const estaAberta = isStoreOpen();
+  const novoStatus = !estaAberta;
+
+  localStorage.setItem('loja_aberta', novoStatus);
+  updateStoreStatus();
+
+  if (novoStatus) {
+    alert("🟢 Loja ABERTA com sucesso! Os clientes já podem fazer pedidos.");
+  } else {
+    alert("🔴 Loja FECHADA com sucesso! O botão de pedidos foi bloqueado.");
+  }
+}
+
+function verFechamentoCaixa() {
   const historico = JSON.parse(localStorage.getItem('vendas_hoje')) || [];
 
   if (historico.length === 0) {
@@ -194,13 +156,79 @@ function verFechamentoCaixa() {
 
   alert(relatorio);
 
-  if (confirm("⚠️ Deseja zerar o caixa para o próximo dia?")) {
+  if (confirm("⚠️ Deseja zerar o caixa para o próximo expediente?")) {
     localStorage.removeItem('vendas_hoje');
     alert("Caixa zerado com sucesso!");
   }
 }
 
-// Formata e envia a mensagem para o WhatsApp
+// --- CONTROLE DE PEDIDOS E INTERFACE ---
+
+function changeQty(key, delta) {
+  if (!isStoreOpen()) {
+    alert("A loja está fechada no momento.");
+    return;
+  }
+
+  if (items[key].qty + delta >= 0) {
+    items[key].qty += delta;
+    document.getElementById(`qty-${key}`).innerText = items[key].qty;
+    updateTotal();
+  }
+}
+
+function toggleOrderType() {
+  const orderType = document.getElementById("order-type").value;
+  const addressGroup = document.getElementById("address-group");
+  
+  if (addressGroup) {
+    addressGroup.style.display = (orderType === "Retirada") ? "none" : "block";
+  }
+
+  updateTotal();
+}
+
+function togglePayment() {
+  const payment = document.getElementById("payment").value;
+  const trocoGroup = document.getElementById("troco-group");
+  const pixGroup = document.getElementById("pix-info-group");
+
+  if (trocoGroup) trocoGroup.style.display = payment === "Dinheiro" ? "block" : "none";
+  if (pixGroup) pixGroup.style.display = payment === "PIX" ? "block" : "none";
+}
+
+function updateTotal() {
+  let subtotal = 0;
+  let totalQty = 0;
+
+  for (const key in items) {
+    subtotal += items[key].qty * items[key].price;
+    totalQty += items[key].qty;
+  }
+
+  const orderTypeSelect = document.getElementById("order-type");
+  const orderType = orderTypeSelect ? orderTypeSelect.value : "Entrega";
+  const fee = (totalQty > 0 && orderType === "Entrega") ? CONFIG.taxaEntrega : 0;
+  const total = subtotal + fee;
+
+  document.getElementById("subtotal-price").innerText = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+  document.getElementById("delivery-fee").innerText = `R$ ${fee.toFixed(2).replace('.', ',')}`;
+  document.getElementById("total-price").innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+}
+
+function registrarVenda(subtotal, taxa, total, pagamento, itensPedido) {
+  const historico = JSON.parse(localStorage.getItem('vendas_hoje')) || [];
+  
+  historico.push({
+    hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    total: total,
+    pagamento: pagamento,
+    itens: JSON.parse(JSON.stringify(itensPedido))
+  });
+
+  localStorage.setItem('vendas_hoje', JSON.stringify(historico));
+}
+
 function sendOrder() {
   if (!isStoreOpen()) {
     alert("Desculpe, a loja está fechada no momento.");
@@ -240,7 +268,7 @@ function sendOrder() {
   const fee = orderType === "Entrega" ? CONFIG.taxaEntrega : 0;
   const totalFinal = subtotal + fee;
 
-  // Salva no relatório de vendas
+  // Salva no relatório do expediente
   registrarVenda(subtotal, fee, totalFinal, payment, items);
 
   let message = `*NOVO PEDIDO - COMIDA NA CHAPA*\n\n`;
@@ -272,7 +300,7 @@ function sendOrder() {
   window.open(url, '_blank');
 }
 
-// Inicializa a checagem ao carregar a página
+// Inicialização da página ao carregar
 document.addEventListener("DOMContentLoaded", () => {
   updateStoreStatus();
   togglePayment();
