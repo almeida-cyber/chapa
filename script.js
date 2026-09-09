@@ -6,7 +6,7 @@ const CONFIG = {
     "Água Fria": 3.00,              // Taxa Água Fria
     "Pedra Branca": 8.00            // 👈 Mude aqui o valor da taxa de Pedra Branca se for diferente
   },
-  senhaAdmin: "1234",              // Senha da proprietária
+  senhaAdmin: "17082005",              // Senha da proprietária
 };
 
 const items = {
