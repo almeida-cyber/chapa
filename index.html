@@ -23,7 +23,7 @@
     <section class="card delivery-card">
       <h2>📍 Entrega / Retirada</h2>
       <div class="delivery-info">
-        <p>🛵 Entregamos no <strong>Bairro Água Fria</strong> e região próxima.</p>
+        <p>🛵 Entregamos no <strong>Bairro Água Fria</strong> e Pedra Branca.</p>
         <p class="fee-badge">Taxa de entrega: <strong>R$ 3,00</strong> (Grátis para Retirada)</p>
       </div>
     </section>
@@ -120,6 +120,16 @@
         <label for="address">Endereço Completo (Bairro Água Fria) *</label>
         <input type="text" id="address" placeholder="Rua, número e ponto de referência">
       </div>
+      <div id="address-group">
+  <label for="bairro">Bairro / Região de Entrega:</label>
+  <select id="bairro" onchange="updateTotal()">
+    <option value="Água Fria">Água Fria (R$ 3,00)</option>
+    <option value="Pedra Branca">Pedra Branca (R$ 5,00)</option> <!-- Altere o texto da taxa se o valor for diferente -->
+  </select>
+
+  <label for="address">Endereço (Rua, Número, Ponto de Referência):</label>
+  <input type="text" id="address" placeholder="Ex: Rua A, nº 123">
+</div>
 
       <div class="form-group">
         <label for="payment">Forma de Pagamento *</label>
