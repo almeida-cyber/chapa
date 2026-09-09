@@ -2,8 +2,11 @@
 
 const CONFIG = {
   whatsappNumber: "5596984352841", // WhatsApp da Vendedora
-  taxaEntrega: 3.00,               // Taxa em R$
-  senhaAdmin: "17082005",              // Senha da proprietária
+  taxasEntrega: {
+    "Água Fria": 3.00,              // Taxa Água Fria
+    "Pedra Branca": 8.00            // 👈 Mude aqui o valor da taxa de Pedra Branca se for diferente
+  },
+  senhaAdmin: "1234",              // Senha da proprietária
 };
 
 const items = {
@@ -73,6 +76,20 @@ function updateStoreStatus() {
       btnOrder.innerText = "Loja Fechada (Fora do Horário)";
     }
   }
+}
+
+// --- CÁLCULO DA TAXA DE ENTREGA POR BAIRRO ---
+
+function getDeliveryFee() {
+  const orderTypeSelect = document.getElementById("order-type");
+  const orderType = orderTypeSelect ? orderTypeSelect.value : "Entrega";
+  
+  if (orderType !== "Entrega") return 0;
+
+  const bairroSelect = document.getElementById("bairro");
+  const bairro = bairroSelect ? bairroSelect.value : "Água Fria";
+  
+  return CONFIG.taxasEntrega[bairro] || 3.00;
 }
 
 // --- PAINEL ADMINISTRATIVO SECRETO (3 CLIQUES NO TÍTULO) ---
@@ -229,9 +246,7 @@ function updateTotal() {
     totalQty += items[key].qty;
   }
 
-  const orderTypeSelect = document.getElementById("order-type");
-  const orderType = orderTypeSelect ? orderTypeSelect.value : "Entrega";
-  const fee = (totalQty > 0 && orderType === "Entrega") ? CONFIG.taxaEntrega : 0;
+  const fee = totalQty > 0 ? getDeliveryFee() : 0;
   const total = subtotal + fee;
 
   document.getElementById("subtotal-price").innerText = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
@@ -279,6 +294,8 @@ function sendOrder() {
   const name = document.getElementById("name").value.trim();
   const orderType = document.getElementById("order-type").value;
   const address = document.getElementById("address").value.trim();
+  const bairroSelect = document.getElementById("bairro");
+  const bairro = bairroSelect ? bairroSelect.value : "Água Fria";
   const payment = document.getElementById("payment").value;
   const troco = document.getElementById("troco").value.trim();
   const notes = document.getElementById("notes").value.trim();
@@ -288,7 +305,7 @@ function sendOrder() {
     return;
   }
 
-  const fee = orderType === "Entrega" ? CONFIG.taxaEntrega : 0;
+  const fee = orderType === "Entrega" ? getDeliveryFee() : 0;
   const totalFinal = subtotal + fee;
 
   registrarVenda(subtotal, fee, totalFinal, payment, items);
@@ -298,7 +315,8 @@ function sendOrder() {
   message += `*Cliente:* ${name}\n`;
   
   if (orderType === "Entrega") {
-    message += `*Endereço:* ${address} (Bairro Água Fria)\n\n`;
+    message += `*Bairro:* ${bairro}\n`;
+    message += `*Endereço:* ${address}\n\n`;
   } else {
     message += `*Endereço:* Retirada no Estabelecimento\n\n`;
   }
