@@ -6,68 +6,50 @@
         ".write": "auth != null",
         ".validate": "newData.isBoolean()"
       },
-
       ".read": false,
       ".write": false
     },
 
     "pedidos": {
       ".read": "auth != null",
-      ".write": false,
-
-      ".indexOn": [
-        "criadoEm"
-      ],
+      ".indexOn": ["criadoEm"],
 
       "$pedidoId": {
-
         ".write": "!data.exists() || auth != null",
-
         ".validate": "newData.hasChildren(['id','criadoEm','status','cliente','pagamento','itens','subtotal','taxaEntrega','total'])",
 
         "id": {
           ".validate": "newData.isString() && newData.val() === $pedidoId"
         },
-
         "criadoEm": {
           ".validate": "newData.isString()"
         },
-
         "status": {
           ".validate": "newData.isString() && (newData.val() === 'Novo' || newData.val() === 'Em preparo' || newData.val() === 'Saiu para entrega' || newData.val() === 'Concluído' || newData.val() === 'Cancelado')"
         },
-
         "cliente": {
-
           "nome": {
             ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
           },
-
           "recebimento": {
             ".validate": "newData.isString()"
           },
-
           "bairro": {
             ".validate": "newData.isString()"
           },
-
           "endereco": {
             ".validate": "newData.isString()"
           }
         },
-
         "pagamento": {
           ".validate": "newData.isString() && (newData.val() === 'PIX' || newData.val() === 'Cartão' || newData.val() === 'Dinheiro')"
         },
-
         "subtotal": {
           ".validate": "newData.isNumber() && newData.val() >= 0"
         },
-
         "taxaEntrega": {
           ".validate": "newData.isNumber() && newData.val() >= 0"
         },
-
         "total": {
           ".validate": "newData.isNumber() && newData.val() >= 0"
         }
