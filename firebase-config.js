@@ -20,9 +20,9 @@ const CONFIG = {
   whatsappNumber: "5596984352841",
   pixKey: "5596984352841",
   produtos: [
-    { id: "calabresa", nome: "Marmita de Calabresa", descricao: "Calabresa na chapa com acompanhamento.", preco: 25, imagem: "img/calabresa.svg", disponivel: true },
+    { id: "calabresa", nome: "Marmita de Calabresa", descricao: "Calabresa na chapa com acompanhamento.", preco: 25, imagem: "marmita de calabresa.png", disponivel: true },
     { id: "carne", nome: "Marmita de Carne", descricao: "Carne na chapa com acompanhamento.", preco: 25, imagem: "marmita de carne.png", disponivel: true },
-    { id: "frango", nome: "Marmita de Frango", descricao: "Frango na chapa com acompanhamento.", preco: 25, imagem: "img/frango.svg", disponivel: true }
+    { id: "frango", nome: "Marmita de Frango", descricao: "Frango na chapa com acompanhamento.", preco: 25, imagem: "marmita de frango.png", disponivel: true }
   ],
   taxas: {
     "Água Fria": 3,
