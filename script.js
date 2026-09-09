@@ -1,1194 +1,255 @@
-/*
- * ============================================================
- * COMIDA NA CHAPA
- * SISTEMA DO CLIENTE
- * ============================================================
- */
+let db = null;
+let cart = {};
+let storeOpen = true;
 
-let database = null;
+const money = value => Number(value || 0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const $ = id => document.getElementById(id);
 
-let lojaAberta = true;
-
-
-/* ============================================================
-   CARRINHO
-   ============================================================ */
-
-const carrinho = {};
-
-Object.keys(CONFIG.produtos).forEach(key => {
-
-  carrinho[key] = 0;
-
+document.addEventListener("DOMContentLoaded", () => {
+  $("year").textContent = new Date().getFullYear();
+  $("pixKey").textContent = CONFIG.pixKey;
+  renderMenu();
+  bindEvents();
+  initFirebase();
+  updateSummary();
 });
 
-
-/* ============================================================
-   INICIALIZAÇÃO
-   ============================================================ */
-
-document.addEventListener(
-  "DOMContentLoaded",
-  () => {
-
-    inicializarFirebase();
-
-    renderizarCardapio();
-
-    carregarBairros();
-
-    configurarEventos();
-
-    atualizarPagamento();
-
-    atualizarTipoPedido();
-
-    atualizarTotais();
-
+function initFirebase(){
+  try{
+    if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    db.ref("configuracoes/lojaAberta").on("value", snap => {
+      storeOpen = snap.exists() ? snap.val() === true : true;
+      updateStoreStatus();
+    }, () => {
+      storeOpen = true;
+      updateStoreStatus("offline");
+    });
+  }catch(error){
+    console.error(error);
+    updateStoreStatus("offline");
   }
-);
-
-
-/* ============================================================
-   FIREBASE
-   ============================================================ */
-
-function inicializarFirebase() {
-
-  try {
-
-    if (
-      !firebaseConfig.apiKey ||
-      firebaseConfig.apiKey.startsWith("COLOQUE_")
-    ) {
-
-      console.warn(
-        "Firebase ainda não configurado."
-      );
-
-      atualizarStatusLoja(true);
-
-      return;
-
-    }
-
-
-    firebase.initializeApp(
-      firebaseConfig
-    );
-
-
-    database =
-      firebase.database();
-
-
-    const statusRef =
-      database.ref(
-        "configuracoes/lojaAberta"
-      );
-
-
-    statusRef.on(
-      "value",
-      snapshot => {
-
-        if (snapshot.exists()) {
-
-          lojaAberta =
-            snapshot.val() === true;
-
-        } else {
-
-          statusRef.set(true);
-
-          lojaAberta = true;
-
-        }
-
-
-        atualizarStatusLoja(
-          lojaAberta
-        );
-
-      }
-    );
-
-
-  } catch (error) {
-
-    console.error(
-      "Firebase:",
-      error
-    );
-
-    atualizarStatusLoja(true);
-
-  }
-
 }
 
-
-/* ============================================================
-   CARDÁPIO
-   ============================================================ */
-
-function renderizarCardapio() {
-
-  const container =
-    document.getElementById(
-      "menu-list"
-    );
-
-
-  container.innerHTML = "";
-
-
-  Object.entries(
-    CONFIG.produtos
-  ).forEach(
-    ([key, produto]) => {
-
-      const card =
-        document.createElement(
-          "article"
-        );
-
-
-      card.className =
-        "card";
-
-
-      card.innerHTML = `
-
-        <img
-          src="${produto.imagem}"
-          alt="${produto.nome}"
-          class="card-img"
-          onerror="this.src='https://placehold.co/600x400?text=Marmita'"
-        >
-
-        <div class="card-info">
-
-          <span class="product-tag">
-
-            ${
-              produto.disponivel
-                ? "Disponível"
-                : "Indisponível"
-            }
-
-          </span>
-
-          <h3>
-            ${produto.nome}
-          </h3>
-
-          <p>
-            ${produto.descricao}
-          </p>
-
-          <strong class="price">
-            ${formatarMoeda(produto.preco)}
-          </strong>
-
+function renderMenu(){
+  const menu = $("menu");
+  const available = CONFIG.produtos.filter(p => p.disponivel);
+  menu.innerHTML = available.map(p => `
+    <article class="product">
+      <img src="${escapeAttr(p.imagem)}" alt="${escapeAttr(p.nome)}" onerror="this.src='https://placehold.co/800x500/f3f3f3/777?text=Marmita'">
+      <div class="product-body">
+        <h3>${escapeHtml(p.nome)}</h3>
+        <p>${escapeHtml(p.descricao)}</p>
+        <div class="product-bottom">
+          <span class="price">${money(p.preco)}</span>
+          <div class="qty">
+            <button type="button" aria-label="Diminuir" onclick="changeQty('${p.id}',-1)">−</button>
+            <span id="qty-${p.id}">0</span>
+            <button type="button" aria-label="Aumentar" onclick="changeQty('${p.id}',1)">+</button>
+          </div>
         </div>
+      </div>
+    </article>
+  `).join("");
+}
 
+window.changeQty = function(id, delta){
+  const product = CONFIG.produtos.find(p => p.id === id);
+  if(!product) return;
+  cart[id] = Math.max(0, (cart[id] || 0) + delta);
+  if(cart[id] === 0) delete cart[id];
+  const el = $(`qty-${id}`);
+  if(el) el.textContent = cart[id] || 0;
+  updateSummary();
+};
 
-        <div class="qty-controls">
-
-          <button
-            type="button"
-            aria-label="Diminuir ${produto.nome}"
-            onclick="alterarQuantidade('${key}', -1)"
-          >
-            −
-          </button>
-
-
-          <span id="qty-${key}">
-            0
-          </span>
-
-
-          <button
-            type="button"
-            aria-label="Aumentar ${produto.nome}"
-            onclick="alterarQuantidade('${key}', 1)"
-            ${
-              !produto.disponivel
-                ? "disabled"
-                : ""
-            }
-          >
-            +
-          </button>
-
-        </div>
-
-      `;
-
-
-      container.appendChild(card);
-
-    }
+function bindEvents(){
+  document.querySelectorAll('input[name="deliveryType"]').forEach(r =>
+    r.addEventListener("change", updateDeliveryVisibility)
   );
-
+  $("neighborhood").addEventListener("change", updateSummary);
+  $("payment").addEventListener("change", updatePayment);
+  $("copyPix").addEventListener("click", copyPix);
+  $("orderForm").addEventListener("submit", submitOrder);
+  $("goCheckout").addEventListener("click", () => $("customerName").scrollIntoView({behavior:"smooth",block:"center"}));
 }
 
-
-/* ============================================================
-   BAIRROS
-   ============================================================ */
-
-function carregarBairros() {
-
-  const select =
-    document.getElementById(
-      "bairro"
-    );
-
-
-  select.innerHTML =
-    Object.entries(
-      CONFIG.taxasEntrega
-    )
-    .map(
-      ([bairro, taxa]) => `
-
-        <option value="${bairro}">
-
-          ${bairro}
-          (${formatarMoeda(taxa)})
-
-        </option>
-
-      `
-    )
-    .join("");
-
+function updateDeliveryVisibility(){
+  const delivery = document.querySelector('input[name="deliveryType"]:checked').value === "delivery";
+  $("deliveryFields").classList.toggle("hidden", !delivery);
+  $("neighborhood").required = delivery;
+  $("address").required = delivery;
+  updateSummary();
 }
 
-
-/* ============================================================
-   EVENTOS
-   ============================================================ */
-
-function configurarEventos() {
-
-  document
-    .getElementById("order-type")
-    .addEventListener(
-      "change",
-      () => {
-
-        atualizarTipoPedido();
-
-        atualizarTotais();
-
-      }
-    );
-
-
-  document
-    .getElementById("bairro")
-    .addEventListener(
-      "change",
-      atualizarTotais
-    );
-
-
-  document
-    .getElementById("payment")
-    .addEventListener(
-      "change",
-      atualizarPagamento
-    );
-
-
-  document
-    .getElementById("btn-order")
-    .addEventListener(
-      "click",
-      enviarPedido
-    );
-
-
-  document
-    .getElementById("copy-pix")
-    .addEventListener(
-      "click",
-      copiarPix
-    );
-
-
-  document
-    .getElementById("go-checkout")
-    .addEventListener(
-      "click",
-      () => {
-
-        document
-          .querySelector(".checkout-form")
-          .scrollIntoView({
-            behavior: "smooth"
-          });
-
-      }
-    );
-
-
-  document
-    .getElementById("store-name")
-    .textContent =
-      CONFIG.loja.nome;
-
+function updatePayment(){
+  const payment = $("payment").value;
+  $("changeField").classList.toggle("hidden", payment !== "Dinheiro");
+  $("pixBox").classList.toggle("hidden", payment !== "PIX");
 }
 
+function updateSummary(){
+  let subtotal = 0, count = 0;
+  CONFIG.produtos.forEach(p => {
+    const qty = cart[p.id] || 0;
+    subtotal += qty * p.preco;
+    count += qty;
+  });
+  const delivery = document.querySelector('input[name="deliveryType"]:checked')?.value === "delivery";
+  const fee = delivery ? Number(CONFIG.taxas[$("neighborhood").value] || 0) : 0;
+  $("subtotal").textContent = money(subtotal);
+  $("deliveryFee").textContent = money(fee);
+  $("total").textContent = money(subtotal + fee);
+  $("cartCount").textContent = `${count} ${count === 1 ? "item" : "itens"}`;
+  $("cartTotal").textContent = money(subtotal + fee);
+  $("cartBar").classList.toggle("hidden", count === 0);
+  $("sendOrder").disabled = count === 0 || !storeOpen;
+}
 
-/* ============================================================
-   ALTERAR QUANTIDADE
-   ============================================================ */
+function updateStoreStatus(mode){
+  const el = $("storeStatus");
+  if(mode === "offline"){
+    el.className = "status open";
+    el.textContent = "● Online";
+  }else if(storeOpen){
+    el.className = "status open";
+    el.textContent = "● Aberta";
+  }else{
+    el.className = "status closed";
+    el.textContent = "● Fechada";
+  }
+  updateSummary();
+}
 
-function alterarQuantidade(
-  key,
-  delta
-) {
+async function copyPix(){
+  try{
+    await navigator.clipboard.writeText(CONFIG.pixKey);
+    $("copyPix").textContent = "Copiado!";
+    setTimeout(() => $("copyPix").textContent = "Copiar", 1500);
+  }catch{
+    alert("PIX: " + CONFIG.pixKey);
+  }
+}
 
-  if (!lojaAberta) {
+async function submitOrder(event){
+  event.preventDefault();
+  const message = $("formMessage");
+  message.textContent = "";
 
-    mostrarFeedback(
-      "A loja está fechada no momento.",
-      "erro"
-    );
-
+  if(!storeOpen){
+    message.textContent = "A loja está fechada no momento.";
     return;
-
   }
 
+  const items = CONFIG.produtos
+    .filter(p => (cart[p.id] || 0) > 0)
+    .map(p => ({id:p.id,nome:p.nome,quantidade:cart[p.id],preco:p.preco}));
 
-  const produto =
-    CONFIG.produtos[key];
-
-
-  if (
-    !produto ||
-    !produto.disponivel
-  ) {
-
+  if(!items.length){
+    message.textContent = "Adicione pelo menos uma marmita.";
     return;
-
   }
 
-
-  carrinho[key] =
-    Math.max(
-      0,
-      carrinho[key] + delta
-    );
-
-
-  const quantidade =
-    document.getElementById(
-      `qty-${key}`
-    );
-
-
-  if (quantidade) {
-
-    quantidade.textContent =
-      carrinho[key];
-
-  }
-
-
-  atualizarTotais();
-
-}
-
-
-/* ============================================================
-   TIPO DE PEDIDO
-   ============================================================ */
-
-function atualizarTipoPedido() {
-
-  const entrega =
-    document.getElementById(
-      "order-type"
-    ).value === "Entrega";
-
-
-  document
-    .getElementById(
-      "address-group"
-    )
-    .classList
-    .toggle(
-      "hidden",
-      !entrega
-    );
-
-
-  document
-    .getElementById(
-      "bairro"
-    )
-    .disabled =
-      !entrega;
-
-}
-
-
-/* ============================================================
-   PAGAMENTO
-   ============================================================ */
-
-function atualizarPagamento() {
-
-  const pagamento =
-    document.getElementById(
-      "payment"
-    ).value;
-
-
-  document
-    .getElementById(
-      "troco-group"
-    )
-    .classList
-    .toggle(
-      "hidden",
-      pagamento !== "Dinheiro"
-    );
-
-
-  document
-    .getElementById(
-      "pix-info-group"
-    )
-    .classList
-    .toggle(
-      "hidden",
-      pagamento !== "PIX"
-    );
-
-
-  document
-    .getElementById(
-      "pix-key"
-    )
-    .textContent =
-      CONFIG.contato.pix ||
-      "Não configurada";
-
-}
-
-
-/* ============================================================
-   SUBTOTAL
-   ============================================================ */
-
-function calcularSubtotal() {
-
-  return Object.entries(
-    carrinho
-  ).reduce(
-    (total, [key, quantidade]) => {
-
-      return (
-        total +
-        (
-          CONFIG.produtos[key].preco *
-          quantidade
-        )
-      );
-
-    },
-    0
-  );
-
-}
-
-
-/* ============================================================
-   QUANTIDADE TOTAL
-   ============================================================ */
-
-function quantidadeTotal() {
-
-  return Object
-    .values(carrinho)
-    .reduce(
-      (total, qtd) =>
-        total + qtd,
-      0
-    );
-
-}
-
-
-/* ============================================================
-   TAXA
-   ============================================================ */
-
-function obterTaxaEntrega() {
-
-  if (
-    document.getElementById(
-      "order-type"
-    ).value !== "Entrega"
-  ) {
-
-    return 0;
-
-  }
-
-
-  const bairro =
-    document.getElementById(
-      "bairro"
-    ).value;
-
-
-  return (
-    CONFIG.taxasEntrega[bairro] ||
-    0
-  );
-
-}
-
-
-/* ============================================================
-   ATUALIZAR TOTAIS
-   ============================================================ */
-
-function atualizarTotais() {
-
-  const subtotal =
-    calcularSubtotal();
-
-
-  const quantidade =
-    quantidadeTotal();
-
-
-  const taxa =
-    quantidade > 0
-      ? obterTaxaEntrega()
-      : 0;
-
-
-  const total =
-    subtotal + taxa;
-
-
-  document.getElementById(
-    "items-count"
-  ).textContent =
-    quantidade;
-
-
-  document.getElementById(
-    "subtotal-price"
-  ).textContent =
-    formatarMoeda(subtotal);
-
-
-  document.getElementById(
-    "delivery-fee"
-  ).textContent =
-    formatarMoeda(taxa);
-
-
-  document.getElementById(
-    "total-price"
-  ).textContent =
-    formatarMoeda(total);
-
-
-  document.getElementById(
-    "cart-total"
-  ).textContent =
-    formatarMoeda(total);
-
-
-  document
-    .getElementById("cart-bar")
-    .classList
-    .toggle(
-      "visible",
-      quantidade > 0
-    );
-
-}
-
-
-/* ============================================================
-   ENVIAR PEDIDO
-   ============================================================ */
-
-async function enviarPedido() {
-
-  if (!lojaAberta) {
-
-    mostrarFeedback(
-      "A loja está fechada no momento.",
-      "erro"
-    );
-
+  const deliveryType = document.querySelector('input[name="deliveryType"]:checked').value;
+  const neighborhood = deliveryType === "delivery" ? $("neighborhood").value : "Retirada";
+  const address = deliveryType === "delivery" ? $("address").value.trim() : "Retirada no local";
+  const payment = $("payment").value;
+  const changeFor = payment === "Dinheiro" ? Number($("changeFor").value || 0) : null;
+
+  if(!payment){
+    message.textContent = "Selecione a forma de pagamento.";
+    $("payment").focus();
     return;
-
   }
 
-
-  const quantidade =
-    quantidadeTotal();
-
-
-  if (quantidade === 0) {
-
-    mostrarFeedback(
-      "Adicione pelo menos uma marmita ao pedido.",
-      "erro"
-    );
-
+  if(deliveryType === "delivery" && (!neighborhood || !address)){
+    message.textContent = "Preencha bairro e endereço para entrega.";
     return;
-
   }
 
-
-  const nome =
-    document
-      .getElementById("name")
-      .value
-      .trim();
-
-
-  const tipo =
-    document
-      .getElementById("order-type")
-      .value;
-
-
-  const endereco =
-    document
-      .getElementById("address")
-      .value
-      .trim();
-
-
-  const bairro =
-    document
-      .getElementById("bairro")
-      .value;
-
-
-  const pagamento =
-    document
-      .getElementById("payment")
-      .value;
-
-
-  const troco =
-    document
-      .getElementById("troco")
-      .value
-      .trim();
-
-
-  const observacoes =
-    document
-      .getElementById("notes")
-      .value
-      .trim();
-
-
-  /* VALIDAÇÃO */
-
-  if (!nome) {
-
-    mostrarFeedback(
-      "Informe seu nome.",
-      "erro"
-    );
-
-    document
-      .getElementById("name")
-      .focus();
-
+  if(payment === "Dinheiro" && (!changeFor || changeFor <= 0)){
+    message.textContent = "Informe o valor para o troco.";
+    $("changeFor").focus();
     return;
-
   }
 
-
-  if (
-    tipo === "Entrega" &&
-    !endereco
-  ) {
-
-    mostrarFeedback(
-      "Informe o endereço de entrega.",
-      "erro"
-    );
-
-    document
-      .getElementById("address")
-      .focus();
-
+  let subtotal = items.reduce((sum,item) => sum + item.preco * item.quantidade, 0);
+  const deliveryFee = deliveryType === "delivery" ? Number(CONFIG.taxas[neighborhood] || 0) : 0;
+  const total = subtotal + deliveryFee;
+  if(payment === "Dinheiro" && changeFor < total){
+    message.textContent = "O valor do troco precisa ser maior ou igual ao total.";
     return;
-
   }
 
-
-  if (
-    pagamento === "Dinheiro" &&
-    !troco
-  ) {
-
-    mostrarFeedback(
-      "Informe para quanto precisa de troco.",
-      "erro"
-    );
-
-    document
-      .getElementById("troco")
-      .focus();
-
-    return;
-
-  }
-
-
-  const subtotal =
-    calcularSubtotal();
-
-
-  const taxa =
-    obterTaxaEntrega();
-
-
-  const total =
-    subtotal + taxa;
-
-
-  const pedidoId =
-    gerarIdPedido();
-
-
-  /* ITENS */
-
-  const itens = {};
-
-
-  Object.entries(
-    carrinho
-  ).forEach(
-    ([key, qtd]) => {
-
-      if (qtd > 0) {
-
-        itens[key] = {
-
-          nome:
-            CONFIG.produtos[key].nome,
-
-          quantidade:
-            qtd,
-
-          precoUnitario:
-            CONFIG.produtos[key].preco,
-
-          total:
-            CONFIG.produtos[key].preco *
-            qtd
-
-        };
-
-      }
-
-    }
-  );
-
-
-  /* OBJETO DO PEDIDO */
-
-  const pedido = {
-
-    id:
-      pedidoId,
-
-    criadoEm:
-      new Date().toISOString(),
-
-    status:
-      "Novo",
-
+  const pedidoId = createOrderId();
+  const order = {
+    id: pedidoId,
+    criadoEm: new Date().toISOString(),
+    status: "Novo",
     cliente: {
-
-      nome,
-
-      tipo,
-
-      bairro:
-        tipo === "Entrega"
-          ? bairro
-          : "",
-
-      endereco:
-        tipo === "Entrega"
-          ? endereco
-          : "Retirada no estabelecimento"
-
+      nome: $("customerName").value.trim(),
+      recebimento: deliveryType === "delivery" ? "Entrega" : "Retirada",
+      bairro: neighborhood,
+      endereco: address
     },
-
-    itens,
-
+    pagamento: payment,
+    trocoPara: changeFor,
+    observacoes: $("notes").value.trim(),
+    itens: items,
     subtotal,
-
-    taxaEntrega:
-      taxa,
-
-    total,
-
-    pagamento,
-
-    troco:
-      pagamento === "Dinheiro"
-        ? troco
-        : "",
-
-    observacoes
-
+    taxaEntrega: deliveryFee,
+    total
   };
 
+  const whatsappText = buildWhatsAppText(order);
 
-  const mensagem =
-    montarMensagemWhatsApp(
-      pedido
-    );
-
-
-  try {
-
-    if (database) {
-
-      await database
-        .ref(
-          `pedidos/${pedidoId}`
-        )
-        .set(pedido);
-
-    }
-
-
-    window.open(
-      `https://wa.me/${CONFIG.contato.whatsapp}?text=${encodeURIComponent(mensagem)}`,
-      "_blank"
-    );
-
-
-    mostrarFeedback(
-      `Pedido ${pedidoId} enviado com sucesso!`,
-      "sucesso"
-    );
-
-
-    limparCarrinho();
-
-
-  } catch (error) {
-
+  try{
+    if(!db) throw new Error("Firebase não inicializado.");
+    await db.ref("pedidos/" + pedidoId).set(order);
+  }catch(error){
     console.error(error);
-
-
-    mostrarFeedback(
-      "Não foi possível registrar o pedido. Tente novamente.",
-      "erro"
-    );
-
+    message.textContent = "Não foi possível registrar o pedido no sistema. Verifique o Firebase e tente novamente.";
+    return;
   }
 
+  window.open(`https://wa.me/${CONFIG.whatsappNumber}?text=${encodeURIComponent(whatsappText)}`, "_blank");
+  cart = {};
+  renderMenu();
+  $("orderForm").reset();
+  $("pixBox").classList.add("hidden");
+  $("changeField").classList.add("hidden");
+  updateDeliveryVisibility();
+  updateSummary();
+  message.textContent = `Pedido ${pedidoId} registrado! O WhatsApp foi aberto.`;
 }
 
-
-/* ============================================================
-   WHATSAPP
-   ============================================================ */
-
-function montarMensagemWhatsApp(
-  pedido
-) {
-
-  let itensTexto = "";
-
-
-  Object.values(
-    pedido.itens
-  ).forEach(
-    item => {
-
-      itensTexto +=
-        `• ${item.quantidade}x ${item.nome} — ${formatarMoeda(item.total)}\n`;
-
-    }
-  );
-
-
-  return `*NOVO PEDIDO - ${CONFIG.loja.nome.toUpperCase()}*
-
-*Pedido:* ${pedido.id}
-*Cliente:* ${pedido.cliente.nome}
-*Tipo:* ${
-  pedido.cliente.tipo === "Entrega"
-    ? "🛵 Entrega"
-    : "🛍️ Retirada"
+function buildWhatsAppText(order){
+  const lines = [
+    `*🍳 COMIDA NA CHAPA*`,
+    `*Pedido ${order.id}*`,
+    ``,
+    `*Cliente:* ${order.cliente.nome}`,
+    `*Recebimento:* ${order.cliente.recebimento}`,
+    order.cliente.recebimento === "Entrega" ? `*Bairro:* ${order.cliente.bairro}\n*Endereço:* ${order.cliente.endereco}` : `*Local:* Retirada`,
+    ``,
+    `*Itens:*`,
+    ...order.itens.map(i => `• ${i.quantidade}x ${i.nome} — ${money(i.preco * i.quantidade)}`),
+    ``,
+    `Subtotal: ${money(order.subtotal)}`,
+    `Entrega: ${money(order.taxaEntrega)}`,
+    `*TOTAL: ${money(order.total)}*`,
+    `Pagamento: ${order.pagamento}`,
+    order.trocoPara ? `Troco para: ${money(order.trocoPara)}` : "",
+    order.observacoes ? `Observações: ${order.observacoes}` : ""
+  ];
+  return lines.filter(Boolean).join("\n");
 }
 
-${
-  pedido.cliente.tipo === "Entrega"
-    ? `*Bairro:* ${pedido.cliente.bairro}
-*Endereço:* ${pedido.cliente.endereco}
-`
-    : ""
+function createOrderId(){
+  const d = new Date();
+  const date = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
+  const random = Math.floor(1000 + Math.random()*9000);
+  return `CN-${date}-${random}`;
 }
-
-*ITENS:*
-${itensTexto}
-*Acompanhamentos:* Arroz, Salada e Farofa
-
-*Subtotal:* ${formatarMoeda(pedido.subtotal)}
-*Taxa de entrega:* ${formatarMoeda(pedido.taxaEntrega)}
-*TOTAL:* ${formatarMoeda(pedido.total)}
-
-*Pagamento:* ${pedido.pagamento}
-${
-  pedido.troco
-    ? `*Troco para:* ${pedido.troco}
-`
-    : ""
-}
-${
-  pedido.observacoes
-    ? `*Observações:* ${pedido.observacoes}`
-    : ""
-}`;
-
-}
-
-
-/* ============================================================
-   LIMPAR CARRINHO
-   ============================================================ */
-
-function limparCarrinho() {
-
-  Object.keys(
-    carrinho
-  ).forEach(
-    key => {
-
-      carrinho[key] = 0;
-
-
-      const el =
-        document.getElementById(
-          `qty-${key}`
-        );
-
-
-      if (el) {
-
-        el.textContent = "0";
-
-      }
-
-    }
-  );
-
-
-  atualizarTotais();
-
-}
-
-
-/* ============================================================
-   STATUS DA LOJA
-   ============================================================ */
-
-function atualizarStatusLoja(
-  aberta
-) {
-
-  lojaAberta =
-    aberta;
-
-
-  const badge =
-    document.getElementById(
-      "status-badge"
-    );
-
-
-  const button =
-    document.getElementById(
-      "btn-order"
-    );
-
-
-  if (aberta) {
-
-    badge.textContent =
-      "🟢 Aberto para pedidos";
-
-    badge.className =
-      "status-badge open";
-
-
-    button.disabled =
-      false;
-
-
-    button.textContent =
-      "📲 Enviar pedido pelo WhatsApp";
-
-  } else {
-
-    badge.textContent =
-      "🔴 Fechado no momento";
-
-    badge.className =
-      "status-badge closed";
-
-
-    button.disabled =
-      true;
-
-
-    button.textContent =
-      "🔒 Loja fechada";
-
-  }
-
-}
-
-
-/* ============================================================
-   COPIAR PIX
-   ============================================================ */
-
-async function copiarPix() {
-
-  try {
-
-    await navigator
-      .clipboard
-      .writeText(
-        CONFIG.contato.pix
-      );
-
-
-    mostrarFeedback(
-      "Chave PIX copiada!",
-      "sucesso"
-    );
-
-
-  } catch {
-
-    mostrarFeedback(
-      "Não foi possível copiar automaticamente.",
-      "erro"
-    );
-
-  }
-
-}
-
-
-/* ============================================================
-   ID DO PEDIDO
-   ============================================================ */
-
-function gerarIdPedido() {
-
-  const data =
-    new Date();
-
-
-  const parteData =
-    data
-      .toISOString()
-      .slice(0, 10)
-      .replaceAll("-", "");
-
-
-  const aleatorio =
-    Math.floor(
-      1000 +
-      Math.random() * 9000
-    );
-
-
-  return `PED-${parteData}-${aleatorio}`;
-
-}
-
-
-/* ============================================================
-   MOEDA
-   ============================================================ */
-
-function formatarMoeda(
-  valor
-) {
-
-  return Number(
-    valor || 0
-  ).toLocaleString(
-    "pt-BR",
-    {
-      style: "currency",
-      currency: "BRL"
-    }
-  );
-
-}
-
-
-/* ============================================================
-   FEEDBACK
-   ============================================================ */
-
-function mostrarFeedback(
-  texto,
-  tipo
-) {
-
-  const el =
-    document.getElementById(
-      "order-feedback"
-    );
-
-
-  el.textContent =
-    texto;
-
-
-  el.className =
-    `feedback ${tipo}`;
-
-
-  setTimeout(
-    () => {
-
-      el.textContent =
-        "";
-
-      el.className =
-        "feedback";
-
-    },
-    5000
-  );
-
-}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function escapeAttr(s){return escapeHtml(s)}

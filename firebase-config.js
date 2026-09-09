@@ -1,134 +1,31 @@
-/*
- * ============================================================
- * COMIDA NA CHAPA
- * CONFIGURAÇÃO DO FIREBASE
- * ============================================================
- */
+// Configuração do Firebase do projeto "Comida na Chapa".
+// A chave Web do Firebase pode aparecer no código do navegador.
+// A segurança real fica nas Authentication + Realtime Database Security Rules.
 
 const firebaseConfig = {
   apiKey: "AIzaSyD8gwCWqmadN58DwXH5fYh47iI5tZUoAqk",
-
-  authDomain:
-    "comida-na-chapa.firebaseapp.com",
-
-  databaseURL:
-    "https://comida-na-chapa-default-rtdb.firebaseio.com",
-
-  projectId:
-    "comida-na-chapa",
-
-  storageBucket:
-    "comida-na-chapa.firebasestorage.app",
-
-  messagingSenderId:
-    "18226994391",
-
-  appId:
-    "1:18226994391:web:238cf2225ebee38521e492"
+  authDomain: "comida-na-chapa.firebaseapp.com",
+  databaseURL: "https://comida-na-chapa-default-rtdb.firebaseio.com",
+  projectId: "comida-na-chapa",
+  storageBucket: "comida-na-chapa.firebasestorage.app",
+  messagingSenderId: "18226994391",
+  appId: "1:18226994391:web:238cf2225ebee38521e492"
 };
 
-
-/*
- * ============================================================
- * CONFIGURAÇÕES DA LOJA
- * ============================================================
- */
-
 const CONFIG = {
-
   loja: {
-
     nome: "Comida na Chapa",
-
-    descricao:
-      "Comida caseira feita na chapa"
-
+    descricao: "Quentinha, saborosa e feita na hora"
   },
-
-
-  contato: {
-
-    whatsapp:
-      "5596984352841",
-
-    pix:
-      "5596984352841"
-
-  },
-
-
-  produtos: {
-
-    calabresa: {
-
-      nome:
-        "Marmita de Calabresa",
-
-      descricao:
-        "Acompanha arroz, salada e farofa.",
-
-      preco:
-        25.00,
-
-      imagem:
-        "img/marmita-calabresa.png",
-
-      disponivel:
-        true
-
-    },
-
-
-    carne: {
-
-      nome:
-        "Marmita de Carne",
-
-      descricao:
-        "Acompanha arroz, salada e farofa.",
-
-      preco:
-        25.00,
-
-      imagem:
-        "img/carne.jpg",
-
-      disponivel:
-        true
-
-    },
-
-
-    frango: {
-
-      nome:
-        "Marmita de Frango",
-
-      descricao:
-        "Acompanha arroz, salada e farofa.",
-
-      preco:
-        25.00,
-
-      imagem:
-        "img/frango.jpg",
-
-      disponivel:
-        true
-
-    }
-
-  },
-
-
-  taxasEntrega: {
-
-    "Água Fria":
-      3.00,
-
-    "Pedra Branca":
-      8.00
-
+  whatsappNumber: "5596984352841",
+  pixKey: "5596984352841",
+  produtos: [
+    { id: "calabresa", nome: "Marmita de Calabresa", descricao: "Calabresa na chapa com acompanhamento.", preco: 25, imagem: "img/calabresa.svg", disponivel: true },
+    { id: "carne", nome: "Marmita de Carne", descricao: "Carne na chapa com acompanhamento.", preco: 25, imagem: "img/carne.svg", disponivel: true },
+    { id: "frango", nome: "Marmita de Frango", descricao: "Frango na chapa com acompanhamento.", preco: 25, imagem: "img/frango.svg", disponivel: true }
+  ],
+  taxas: {
+    "Água Fria": 3,
+    "Pedra Branca": 5
   }
-
 };

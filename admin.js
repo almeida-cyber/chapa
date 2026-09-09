@@ -1,899 +1,117 @@
-/*
- * ============================================================
- * COMIDA NA CHAPA
- * PAINEL ADMINISTRATIVO
- * ============================================================
- *
- * Requer:
- *
- * Firebase Authentication
- * Firebase Realtime Database
- *
- */
+let auth, db, ordersCache = {};
+const money = v => Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const $ = id => document.getElementById(id);
 
+document.addEventListener("DOMContentLoaded", () => {
+  try{
+    if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.database();
 
-let auth = null;
+    auth.onAuthStateChanged(user => {
+      $("loginScreen").classList.toggle("hidden", !!user);
+      $("dashboard").classList.toggle("hidden", !user);
+      if(user) startDashboard();
+    });
 
-let database = null;
-
-let pedidosCache = {};
-
-
-/* ============================================================
-   INICIALIZAÇÃO
-   ============================================================ */
-
-document.addEventListener(
-  "DOMContentLoaded",
-  () => {
-
-    inicializar();
-
-  }
-);
-
-
-/* ============================================================
-   FIREBASE
-   ============================================================ */
-
-function inicializar() {
-
-  try {
-
-    if (
-      !firebaseConfig.apiKey ||
-      firebaseConfig.apiKey.startsWith(
-        "COLOQUE_"
-      )
-    ) {
-
-      mostrarLoginMensagem(
-        "Configure o firebase-config.js primeiro."
-      );
-
-      return;
-
-    }
-
-
-    firebase.initializeApp(
-      firebaseConfig
-    );
-
-
-    auth =
-      firebase.auth();
-
-
-    database =
-      firebase.database();
-
-
-    /* OBSERVAR LOGIN */
-
-    auth.onAuthStateChanged(
-      user => {
-
-        if (user) {
-
-          document
-            .getElementById(
-              "login-section"
-            )
-            .classList
-            .add("hidden");
-
-
-          document
-            .getElementById(
-              "dashboard"
-            )
-            .classList
-            .remove("hidden");
-
-
-          iniciarPainel();
-
-        } else {
-
-          document
-            .getElementById(
-              "login-section"
-            )
-            .classList
-            .remove("hidden");
-
-
-          document
-            .getElementById(
-              "dashboard"
-            )
-            .classList
-            .add("hidden");
-
-        }
-
-      }
-    );
-
-
-    /* EVENTOS */
-
-    document
-      .getElementById("login")
-      .addEventListener(
-        "click",
-        login
-      );
-
-
-    document
-      .getElementById("logout")
-      .addEventListener(
-        "click",
-        () =>
-          auth.signOut()
-      );
-
-
-    document
-      .getElementById("refresh")
-      .addEventListener(
-        "click",
-        carregarPedidos
-      );
-
-
-    document
-      .getElementById("toggle-store")
-      .addEventListener(
-        "click",
-        alternarLoja
-      );
-
-
-    /* DATA */
-
-    document
-      .getElementById(
-        "today-label"
-      )
-      .textContent =
-        new Date()
-          .toLocaleDateString(
-            "pt-BR",
-            {
-              dateStyle:
-                "full"
-            }
-          );
-
-
-  } catch (error) {
-
-    mostrarLoginMensagem(
-      "Erro ao iniciar o Firebase."
-    );
-
+    $("loginForm").addEventListener("submit", login);
+    $("logout").addEventListener("click", () => auth.signOut());
+    $("storeToggle").addEventListener("click", toggleStore);
+  }catch(error){
     console.error(error);
-
+    $("loginError").textContent = "Erro ao iniciar Firebase.";
   }
+});
 
-}
-
-
-/* ============================================================
-   LOGIN
-   ============================================================ */
-
-async function login() {
-
-  const email =
-    document
-      .getElementById("email")
-      .value
-      .trim();
-
-
-  const password =
-    document
-      .getElementById("password")
-      .value;
-
-
-  if (!email || !password) {
-
-    mostrarLoginMensagem(
-      "Informe e-mail e senha."
-    );
-
-    return;
-
-  }
-
-
-  try {
-
-    await auth
-      .signInWithEmailAndPassword(
-        email,
-        password
-      );
-
-
-    mostrarLoginMensagem("");
-
-
-  } catch (error) {
-
+async function login(e){
+  e.preventDefault();
+  $("loginError").textContent = "";
+  try{
+    await auth.signInWithEmailAndPassword($("email").value.trim(), $("password").value);
+  }catch(error){
     console.error(error);
-
-    mostrarLoginMensagem(
-      "E-mail ou senha inválidos."
-    );
-
+    $("loginError").textContent = "E-mail ou senha inválidos.";
   }
-
 }
 
+function startDashboard(){
+  db.ref("configuracoes/lojaAberta").on("value", snap => {
+    const open = snap.exists() ? snap.val() === true : true;
+    const btn = $("storeToggle");
+    btn.textContent = open ? "● Aberta" : "● Fechada";
+    btn.className = open ? "open" : "";
+  });
 
-/* ============================================================
-   INICIAR PAINEL
-   ============================================================ */
-
-function iniciarPainel() {
-
-  observarStatusLoja();
-
-  carregarPedidos();
-
+  db.ref("pedidos").orderByChild("criadoEm").limitToLast(100).on("value", snap => {
+    ordersCache = snap.val() || {};
+    $("connection").textContent = "● conectado";
+    renderDashboard();
+  }, error => {
+    console.error(error);
+    $("connection").textContent = "● erro";
+  });
 }
 
-
-/* ============================================================
-   STATUS DA LOJA
-   ============================================================ */
-
-function observarStatusLoja() {
-
-  database
-    .ref(
-      "configuracoes/lojaAberta"
-    )
-    .on(
-      "value",
-      snapshot => {
-
-        const aberta =
-          snapshot.exists()
-            ? snapshot.val() === true
-            : true;
-
-
-        atualizarBotaoLoja(
-          aberta
-        );
-
-      }
-    );
-
+async function toggleStore(){
+  const current = $("storeToggle").classList.contains("open");
+  try{ await db.ref("configuracoes/lojaAberta").set(!current); }
+  catch(e){ alert("Não foi possível alterar o status."); }
 }
 
+function renderDashboard(){
+  const orders = Object.values(ordersCache).sort((a,b)=>String(b.criadoEm).localeCompare(String(a.criadoEm)));
+  const today = new Date().toISOString().slice(0,10);
+  const todayOrders = orders.filter(o => String(o.criadoEm||"").slice(0,10) === today);
+  const valid = todayOrders.filter(o => o.status !== "Cancelado");
 
-/* ============================================================
-   ABRIR / FECHAR LOJA
-   ============================================================ */
+  const meals = valid.reduce((sum,o)=>sum+(o.itens||[]).reduce((s,i)=>s+Number(i.quantidade||0),0),0);
+  const sales = valid.reduce((sum,o)=>sum+Number(o.total||0),0);
+  $("statOrders").textContent = todayOrders.length;
+  $("statMeals").textContent = meals;
+  $("statSales").textContent = money(sales);
+  $("statTicket").textContent = money(valid.length ? sales/valid.length : 0);
 
-async function alternarLoja() {
-
-  const ref =
-    database.ref(
-      "configuracoes/lojaAberta"
-    );
-
-
-  const snapshot =
-    await ref.once("value");
-
-
-  const atual =
-    snapshot.exists()
-      ? snapshot.val() === true
-      : true;
-
-
-  await ref.set(
-    !atual
-  );
-
+  renderOrders(orders.slice(0,30));
+  renderPayments(valid);
+  renderProducts(valid);
 }
 
-
-/* ============================================================
-   ATUALIZAR BOTÃO
-   ============================================================ */
-
-function atualizarBotaoLoja(
-  aberta
-) {
-
-  const btn =
-    document.getElementById(
-      "toggle-store"
-    );
-
-
-  const stat =
-    document.getElementById(
-      "stat-store"
-    );
-
-
-  btn.textContent =
-    aberta
-      ? "🟢 Loja aberta — Fechar"
-      : "🔴 Loja fechada — Abrir";
-
-
-  btn.classList.toggle(
-    "closed",
-    !aberta
-  );
-
-
-  stat.textContent =
-    aberta
-      ? "Aberta"
-      : "Fechada";
-
-}
-
-
-/* ============================================================
-   CARREGAR PEDIDOS
-   ============================================================ */
-
-function carregarPedidos() {
-
-  if (!database) {
-
-    return;
-
-  }
-
-
-  database
-    .ref("pedidos")
-    .limitToLast(100)
-    .on(
-      "value",
-      snapshot => {
-
-        pedidosCache =
-          snapshot.val() || {};
-
-
-        renderizarDashboard();
-
-      }
-    );
-
-}
-
-
-/* ============================================================
-   DASHBOARD
-   ============================================================ */
-
-function renderizarDashboard() {
-
-  const hoje =
-    new Date()
-      .toISOString()
-      .slice(0, 10);
-
-
-  const pedidos =
-    Object.values(
-      pedidosCache
-    )
-    .filter(
-      p =>
-        p &&
-        p.criadoEm &&
-        p.criadoEm.slice(
-          0,
-          10
-        ) === hoje
-    )
-    .sort(
-      (a, b) =>
-        new Date(b.criadoEm) -
-        new Date(a.criadoEm)
-    );
-
-
-  let totalVendas = 0;
-
-  let totalItens = 0;
-
-
-  const pagamentos = {
-
-    PIX: 0,
-
-    Cartão: 0,
-
-    Dinheiro: 0
-
-  };
-
-
-  const produtos = {};
-
-
-  pedidos.forEach(
-    pedido => {
-
-      if (
-        pedido.status !==
-        "Cancelado"
-      ) {
-
-        totalVendas +=
-          Number(
-            pedido.total || 0
-          );
-
-
-        pagamentos[
-          pedido.pagamento
-        ] =
-          (
-            pagamentos[
-              pedido.pagamento
-            ] || 0
-          ) +
-          Number(
-            pedido.total || 0
-          );
-
-
-        Object.values(
-          pedido.itens || {}
-        )
-        .forEach(
-          item => {
-
-            totalItens +=
-              Number(
-                item.quantidade || 0
-              );
-
-
-            produtos[item.nome] =
-              (
-                produtos[item.nome] ||
-                0
-              ) +
-              Number(
-                item.quantidade || 0
-              );
-
-          }
-        );
-
-      }
-
-    }
-  );
-
-
-  /* ESTATÍSTICAS */
-
-  document.getElementById(
-    "stat-orders"
-  ).textContent =
-    pedidos.length;
-
-
-  document.getElementById(
-    "stat-items"
-  ).textContent =
-    totalItens;
-
-
-  document.getElementById(
-    "stat-sales"
-  ).textContent =
-    formatarMoeda(
-      totalVendas
-    );
-
-
-  document.getElementById(
-    "sales-pix"
-  ).textContent =
-    formatarMoeda(
-      pagamentos.PIX || 0
-    );
-
-
-  document.getElementById(
-    "sales-card"
-  ).textContent =
-    formatarMoeda(
-      pagamentos.Cartão || 0
-    );
-
-
-  document.getElementById(
-    "sales-cash"
-  ).textContent =
-    formatarMoeda(
-      pagamentos.Dinheiro || 0
-    );
-
-
-  /* PRODUTOS */
-
-  const productSales =
-    document.getElementById(
-      "product-sales"
-    );
-
-
-  productSales.innerHTML =
-    Object.entries(produtos)
-      .sort(
-        (a, b) =>
-          b[1] - a[1]
-      )
-      .map(
-        ([nome, qtd]) =>
-          `
-          <div>
-
-            <span>
-              ${escapeHtml(nome)}
-            </span>
-
-            <strong>
-              ${qtd}
-            </strong>
-
-          </div>
-          `
-      )
-      .join("")
-      ||
-      `
-        <div>
-
-          <span>
-            Nenhuma venda
-          </span>
-
-          <strong>
-            0
-          </strong>
-
-        </div>
-      `;
-
-
-  document.getElementById(
-    "orders-count"
-  ).textContent =
-    `${pedidos.length} hoje`;
-
-
-  renderizarPedidos(
-    pedidos
-  );
-
-}
-
-
-/* ============================================================
-   RENDERIZAR PEDIDOS
-   ============================================================ */
-
-function renderizarPedidos(
-  pedidos
-) {
-
-  const container =
-    document.getElementById(
-      "orders-list"
-    );
-
-
-  container.innerHTML = "";
-
-
-  if (!pedidos.length) {
-
-    container.innerHTML =
-      `
-      <div class="empty">
-
-        Nenhum pedido encontrado hoje.
-
+function renderOrders(orders){
+  const el = $("orders");
+  if(!orders.length){el.innerHTML="<p>Nenhum pedido registrado.</p>";return}
+  el.innerHTML = orders.map(o => `
+    <article class="order">
+      <div class="order-head">
+        <div><div class="order-id">${esc(o.id)}</div><div class="order-meta">${formatDate(o.criadoEm)} • ${esc(o.cliente?.nome || "")}</div></div>
+        <strong>${money(o.total)}</strong>
       </div>
-      `;
-
-    return;
-
-  }
-
-
-  pedidos.forEach(
-    pedido => {
-
-      const template =
-        document.getElementById(
-          "order-template"
-        );
-
-
-      const card =
-        template
-          .content
-          .cloneNode(true);
-
-
-      const root =
-        card.querySelector(
-          ".order-card"
-        );
-
-
-      card.querySelector(
-        ".order-id"
-      ).textContent =
-        pedido.id;
-
-
-      card.querySelector(
-        ".order-time"
-      ).textContent =
-        new Date(
-          pedido.criadoEm
-        )
-        .toLocaleTimeString(
-          "pt-BR",
-          {
-            hour:
-              "2-digit",
-
-            minute:
-              "2-digit"
-          }
-        );
-
-
-      card.querySelector(
-        ".order-status"
-      ).textContent =
-        pedido.status ||
-        "Novo";
-
-
-      card.querySelector(
-        ".order-client"
-      ).textContent =
-        pedido
-          .cliente
-          ?.nome ||
-        "Cliente";
-
-
-      card.querySelector(
-        ".order-address"
-      ).textContent =
-
-        pedido.cliente?.tipo ===
-        "Entrega"
-
-          ? `${
-              pedido.cliente?.bairro ||
-              ""
-            } • ${
-              pedido.cliente?.endereco ||
-              ""
-            }`
-
-          : "Retirada no estabelecimento";
-
-
-      const itemsEl =
-        card.querySelector(
-          ".order-items"
-        );
-
-
-      itemsEl.innerHTML =
-        Object.values(
-          pedido.itens || {}
-        )
-        .map(
-          item =>
-            `
-            ${item.quantidade}x
-            ${escapeHtml(item.nome)}
-            —
-            ${formatarMoeda(
-              Number(
-                item.total || 0
-              )
-            )}
-            `
-        )
-        .join("<br>");
-
-
-      card.querySelector(
-        ".order-total"
-      ).textContent =
-        `Total: ${
-          formatarMoeda(
-            Number(
-              pedido.total || 0
-            )
-          )
-        }`;
-
-
-      card.querySelector(
-        ".order-payment"
-      ).textContent =
-        `Pagamento: ${
-          pedido.pagamento || "-"
-        }`;
-
-
-      card.querySelector(
-        ".order-notes"
-      ).textContent =
-        pedido.observacoes
-          ? `Obs.: ${pedido.observacoes}`
-          : "";
-
-
-      const select =
-        card.querySelector(
-          ".status-select"
-        );
-
-
-      select.value =
-        pedido.status ||
-        "Novo";
-
-
-      card.querySelector(
-        ".save-status"
-      ).addEventListener(
-        "click",
-        async () => {
-
-          try {
-
-            await database
-              .ref(
-                `pedidos/${pedido.id}/status`
-              )
-              .set(
-                select.value
-              );
-
-
-            alert(
-              "Status atualizado!"
-            );
-
-
-          } catch (error) {
-
-            alert(
-              "Não foi possível atualizar o status."
-            );
-
-
-            console.error(
-              error
-            );
-
-          }
-
-        }
-      );
-
-
-      container.appendChild(
-        card
-      );
-
-    }
-  );
-
+      <div class="order-items">${(o.itens||[]).map(i=>`${Number(i.quantidade)}x ${esc(i.nome)} — ${money(i.preco*i.quantidade)}`).join("<br>")}</div>
+      <div class="order-meta">${esc(o.cliente?.recebimento||"")} • ${esc(o.cliente?.bairro||"")} • ${esc(o.pagamento||"")}</div>
+      <div class="order-footer">
+        <span class="order-total">${o.cliente?.endereco ? esc(o.cliente.endereco) : "Retirada"}</span>
+        <select onchange="updateStatus('${escAttr(o.id)}',this.value)">
+          ${["Novo","Em preparo","Saiu para entrega","Concluído","Cancelado"].map(s=>`<option ${s===o.status?"selected":""}>${s}</option>`).join("")}
+        </select>
+      </div>
+    </article>
+  `).join("");
 }
 
+window.updateStatus = async function(id,status){
+  try{ await db.ref("pedidos/"+id+"/status").set(status); }
+  catch(e){ alert("Erro ao atualizar o pedido."); }
+};
 
-/* ============================================================
-   MENSAGEM LOGIN
-   ============================================================ */
-
-function mostrarLoginMensagem(
-  texto
-) {
-
-  document.getElementById(
-    "login-message"
-  ).textContent =
-    texto;
-
+function renderPayments(orders){
+  const totals = {};
+  orders.forEach(o=>totals[o.pagamento]=(totals[o.pagamento]||0)+Number(o.total||0));
+  $("payments").innerHTML = Object.keys(totals).length ? Object.entries(totals).map(([k,v])=>`<div class="metric-line"><span>${esc(k)}</span><strong>${money(v)}</strong></div>`).join("") : "<p>Nenhuma venda hoje.</p>";
 }
-
-
-/* ============================================================
-   MOEDA
-   ============================================================ */
-
-function formatarMoeda(
-  valor
-) {
-
-  return Number(
-    valor || 0
-  ).toLocaleString(
-    "pt-BR",
-    {
-      style: "currency",
-      currency: "BRL"
-    }
-  );
-
+function renderProducts(orders){
+  const totals = {};
+  orders.forEach(o=>(o.itens||[]).forEach(i=>totals[i.nome]=(totals[i.nome]||0)+Number(i.quantidade||0)));
+  $("products").innerHTML = Object.keys(totals).length ? Object.entries(totals).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="metric-line"><span>${esc(k)}</span><strong>${v} un.</strong></div>`).join("") : "<p>Nenhuma venda hoje.</p>";
 }
-
-
-/* ============================================================
-   SEGURANÇA HTML
-   ============================================================ */
-
-function escapeHtml(
-  texto
-) {
-
-  return String(
-    texto || ""
-  )
-
-    .replaceAll(
-      "&",
-      "&amp;"
-    )
-
-    .replaceAll(
-      "<",
-      "&lt;"
-    )
-
-    .replaceAll(
-      ">",
-      "&gt;"
-    )
-
-    .replaceAll(
-      '"',
-      "&quot;"
-    )
-
-    .replaceAll(
-      "'",
-      "&#039;"
-    );
-
-}
+function formatDate(value){try{return new Date(value).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}catch{return value}}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function escAttr(s){return esc(s).replace(/'/g,"&#039;")}

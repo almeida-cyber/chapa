@@ -3,381 +3,129 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#d9381e">
-
-  <title>Comida na Chapa - Cardápio Digital</title>
-
+  <meta name="description" content="Comida na Chapa — cardápio digital e pedidos online.">
+  <meta name="theme-color" content="#d92323">
+  <title>Comida na Chapa | Cardápio Digital</title>
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-
-  <header class="site-header">
-
+  <header class="topbar">
     <div class="brand">
-
-      <div class="brand-icon">
-        🍱
-      </div>
-
+      <div class="brand-mark">🍳</div>
       <div>
-        <h1 id="store-name">
-          Comida na Chapa
-        </h1>
-
-        <p>
-          Comida caseira feita na chapa
-        </p>
+        <h1>Comida na Chapa</h1>
+        <p>Quentinha, saborosa e feita na hora</p>
       </div>
-
     </div>
-
-    <div id="status-badge" class="status-badge open">
-      🟢 Aberto para pedidos
-    </div>
-
+    <span id="storeStatus" class="status closed">● Verificando...</span>
   </header>
 
-
   <main class="container">
-
     <section class="hero">
-
-      <span class="eyebrow">
-        CARDÁPIO DIGITAL
-      </span>
-
-      <h2>
-        Escolha sua marmita
-      </h2>
-
-      <p>
-        Selecione os itens, informe os dados e envie seu pedido pelo WhatsApp.
-      </p>
-
+      <div>
+        <span class="eyebrow">CARDÁPIO DIGITAL</span>
+        <h2>Escolha sua marmita</h2>
+        <p>Monte seu pedido e envie diretamente pelo WhatsApp.</p>
+      </div>
+      <div class="hero-badge">🔥 Feita na chapa</div>
     </section>
 
-
-    <!-- CARDÁPIO -->
-    <section
-      id="menu-list"
-      class="menu-list"
-      aria-label="Cardápio">
+    <section>
+      <div id="menu" class="menu-grid"></div>
     </section>
 
-
-    <!-- CHECKOUT -->
-    <section class="checkout-form">
-
+    <section class="checkout card">
       <div class="section-title">
-
-        <span>📝</span>
-
+        <span>🛒</span>
         <div>
-
-          <h2>
-            Dados para o pedido
-          </h2>
-
-          <p>
-            Preencha os dados abaixo.
-          </p>
-
+          <h2>Finalizar pedido</h2>
+          <p>Preencha seus dados para enviar o pedido.</p>
         </div>
-
       </div>
 
-
-      <div class="form-grid">
-
-        <!-- NOME -->
-        <div class="form-group full">
-
-          <label for="name">
-            Seu nome *
-          </label>
-
-          <input
-            type="text"
-            id="name"
-            placeholder="Digite seu nome completo"
-            autocomplete="name">
-
+      <form id="orderForm">
+        <div class="field">
+          <label for="customerName">Seu nome *</label>
+          <input id="customerName" name="customerName" type="text" maxlength="80" required placeholder="Digite seu nome">
         </div>
 
-
-        <!-- TIPO DE PEDIDO -->
-        <div class="form-group">
-
-          <label for="order-type">
-            Tipo de pedido *
-          </label>
-
-          <select id="order-type">
-
-            <option value="Entrega">
-              🛵 Entrega
-            </option>
-
-            <option value="Retirada">
-              🛍️ Retirada no local
-            </option>
-
-          </select>
-
-        </div>
-
-
-        <!-- BAIRRO -->
-        <div class="form-group">
-
-          <label for="bairro">
-            Bairro / Região *
-          </label>
-
-          <select id="bairro"></select>
-
-        </div>
-
-
-        <!-- ENDEREÇO -->
-        <div
-          id="address-group"
-          class="form-group full">
-
-          <label for="address">
-            Endereço *
-          </label>
-
-          <input
-            type="text"
-            id="address"
-            placeholder="Rua, número e ponto de referência"
-            autocomplete="street-address">
-
-        </div>
-
-
-        <!-- PAGAMENTO -->
-        <div class="form-group">
-
-          <label for="payment">
-            Forma de pagamento *
-          </label>
-
-          <select id="payment">
-
-            <option value="PIX">
-              PIX
-            </option>
-
-            <option value="Cartão">
-              Cartão (Débito/Crédito)
-            </option>
-
-            <option value="Dinheiro">
-              Dinheiro
-            </option>
-
-          </select>
-
-        </div>
-
-
-        <!-- TROCO -->
-        <div
-          id="troco-group"
-          class="form-group hidden">
-
-          <label for="troco">
-            Troco para quanto?
-          </label>
-
-          <input
-            type="text"
-            id="troco"
-            placeholder="Ex.: R$ 50,00">
-
-        </div>
-
-
-        <!-- PIX -->
-        <div
-          id="pix-info-group"
-          class="form-group full hidden">
-
-          <div class="pix-box">
-
-            <span>
-              🔑
-            </span>
-
-            <div>
-
-              <strong>
-                Chave PIX
-              </strong>
-
-              <p id="pix-key">
-                Configure no firebase-config.js
-              </p>
-
-            </div>
-
-            <button
-              type="button"
-              id="copy-pix"
-              class="btn-secondary">
-
-              Copiar
-
-            </button>
-
+        <div class="field">
+          <label>Forma de recebimento *</label>
+          <div class="segmented">
+            <label><input type="radio" name="deliveryType" value="delivery" checked> <span>🚗 Entrega</span></label>
+            <label><input type="radio" name="deliveryType" value="pickup"> <span>🏪 Retirada</span></label>
           </div>
-
         </div>
 
-
-        <!-- OBSERVAÇÕES -->
-        <div class="form-group full">
-
-          <label for="notes">
-            Observações
-          </label>
-
-          <textarea
-            id="notes"
-            rows="3"
-            placeholder="Ex.: sem salada, capricha na farofa..."></textarea>
-
+        <div id="deliveryFields">
+          <div class="field">
+            <label for="neighborhood">Bairro *</label>
+            <select id="neighborhood" name="neighborhood">
+              <option value="">Selecione</option>
+              <option value="Água Fria">Água Fria — R$ 3,00</option>
+              <option value="Pedra Branca">Pedra Branca — R$ 5,00</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="address">Endereço *</label>
+            <input id="address" name="address" type="text" maxlength="160" placeholder="Rua, número, complemento">
+          </div>
         </div>
 
-      </div>
-
-
-      <!-- RESUMO -->
-      <div class="total-summary">
-
-        <div>
-
-          <span>
-            Itens
-          </span>
-
-          <strong id="items-count">
-            0
-          </strong>
-
+        <div class="field">
+          <label for="payment">Pagamento *</label>
+          <select id="payment" name="payment" required>
+            <option value="">Selecione</option>
+            <option value="PIX">PIX</option>
+            <option value="Cartão">Cartão</option>
+            <option value="Dinheiro">Dinheiro</option>
+          </select>
         </div>
 
-
-        <div>
-
-          <span>
-            Subtotal
-          </span>
-
-          <strong id="subtotal-price">
-            R$ 0,00
-          </strong>
-
+        <div id="changeField" class="field hidden">
+          <label for="changeFor">Troco para quanto?</label>
+          <input id="changeFor" type="number" min="0" step="0.01" placeholder="Ex.: 50,00">
         </div>
 
-
-        <div>
-
-          <span>
-            Taxa de entrega
-          </span>
-
-          <strong id="delivery-fee">
-            R$ 0,00
-          </strong>
-
+        <div id="pixBox" class="pix-box hidden">
+          <strong>PIX</strong>
+          <span id="pixKey">5596984352841</span>
+          <button id="copyPix" type="button" class="small-btn">Copiar</button>
         </div>
 
-
-        <div class="total-row">
-
-          <span>
-            Total
-          </span>
-
-          <strong id="total-price">
-            R$ 0,00
-          </strong>
-
+        <div class="field">
+          <label for="notes">Observações</label>
+          <textarea id="notes" maxlength="300" rows="3" placeholder="Ex.: sem cebola, ponto da carne..."></textarea>
         </div>
 
-      </div>
+        <div class="summary">
+          <div><span>Subtotal</span><strong id="subtotal">R$ 0,00</strong></div>
+          <div><span>Entrega</span><strong id="deliveryFee">R$ 0,00</strong></div>
+          <div class="total"><span>Total</span><strong id="total">R$ 0,00</strong></div>
+        </div>
 
-
-      <!-- BOTÃO PEDIDO -->
-      <button
-        id="btn-order"
-        class="btn-submit"
-        type="button">
-
-        📲 Enviar pedido pelo WhatsApp
-
-      </button>
-
-
-      <p
-        id="order-feedback"
-        class="feedback"
-        role="status">
-      </p>
-
+        <button id="sendOrder" class="whatsapp-btn" type="submit">📲 Enviar pedido pelo WhatsApp</button>
+        <p id="formMessage" class="form-message"></p>
+      </form>
     </section>
-
   </main>
 
-
-  <!-- CARRINHO FIXO -->
-  <div id="cart-bar" class="cart-bar">
-
+  <div id="cartBar" class="cart-bar hidden">
     <div>
-
-      <small>
-        Seu pedido
-      </small>
-
-      <strong id="cart-total">
-        R$ 0,00
-      </strong>
-
+      <strong id="cartCount">0 itens</strong>
+      <span id="cartTotal">R$ 0,00</span>
     </div>
-
-    <button
-      type="button"
-      id="go-checkout">
-
-      Finalizar
-
-    </button>
-
+    <button id="goCheckout">Finalizar</button>
   </div>
 
-
   <footer>
-
-    <p>
-      Comida na Chapa • Cardápio Digital
-    </p>
-
+    <strong>Comida na Chapa</strong>
+    <span>Pedido online • © <span id="year"></span></span>
   </footer>
 
-
-  <!-- FIREBASE -->
-
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-
   <script src="firebase-config.js"></script>
-
   <script src="script.js"></script>
-
 </body>
 </html>
