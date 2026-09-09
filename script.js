@@ -5,7 +5,7 @@ const CONFIG = {
   taxaEntrega: 3.00,               // Taxa em R$
   senhaAdmin: "1234",              // Senha da proprietária
   
-  lojaAbertaManual: true,          // Status padrão inicial
+  lojaAbertaManual: false,         // 👈 'false' = FECHADA globalmente / 'true' = ABERTA
   usarHorarioAutomatico: false,    
   horaAbertura: 10,  
   horaFechamento: 22 
@@ -20,11 +20,17 @@ const items = {
 // --- GERENCIAMENTO DE STATUS DA LOJA ---
 
 function isStoreOpen() {
+  // Trava Mestra: Se no código estiver false, fecha IMEDIATAMENTE para todos os clientes no mundo
+  if (CONFIG.lojaAbertaManual === false) {
+    return false;
+  }
+
   const statusSalvo = localStorage.getItem('loja_aberta');
   if (statusSalvo !== null) {
     return statusSalvo === 'true';
   }
-  return CONFIG.lojaAbertaManual;
+
+  return true;
 }
 
 function updateStoreStatus() {
@@ -109,9 +115,9 @@ function alternarStatusLoja() {
   updateStoreStatus();
 
   if (novoStatus) {
-    alert("🟢 Loja ABERTA com sucesso! Os clientes já podem fazer pedidos.");
+    alert("🟢 Loja ABERTA com sucesso neste aparelho!");
   } else {
-    alert("🔴 Loja FECHADA com sucesso! O botão de pedidos foi bloqueado.");
+    alert("🔴 Loja FECHADA com sucesso neste aparelho!");
   }
 }
 
