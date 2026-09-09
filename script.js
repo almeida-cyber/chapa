@@ -3,7 +3,7 @@
 const CONFIG = {
   whatsappNumber: "5596984352841", // WhatsApp da Vendedora
   taxaEntrega: 3.00,               // Taxa em R$
-  senhaAdmin: "1234",              // Senha da proprietária
+  senhaAdmin: "17082005",              // Senha da proprietária
 };
 
 const items = {
