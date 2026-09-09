@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="theme-color"
+    content="#d9381e">
+
+  <title>
+    Painel — Comida na Chapa
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="admin.css">
+
+</head>
+
+
+<body>
+
+
+  <!-- =====================================================
+       CABEÇALHO
+       ===================================================== -->
+
+  <header class="admin-header">
+
+    <div>
+
+      <span class="eyebrow">
+        PAINEL ADMINISTRATIVO
+      </span>
+
+      <h1>
+        Comida na Chapa
+      </h1>
+
+      <p>
+        Gerencie pedidos e o funcionamento da loja.
+      </p>
+
+    </div>
+
+
+    <div class="header-actions">
+
+      <button
+        id="toggle-store"
+        class="btn-store">
+
+        Carregando...
+
+      </button>
+
+
+      <button
+        id="logout"
+        class="btn-ghost">
+
+        Sair
+
+      </button>
+
+    </div>
+
+  </header>
+
+
+  <main class="admin-container">
+
+
+    <!-- ===================================================
+         LOGIN
+         =================================================== -->
+
+    <section
+      id="login-section"
+      class="login-card">
+
+      <div class="login-icon">
+        🔐
+      </div>
+
+      <h2>
+        Acesso da proprietária
+      </h2>
+
+      <p>
+        Entre com sua conta do Firebase Authentication.
+      </p>
+
+
+      <input
+        id="email"
+        type="email"
+        placeholder="E-mail"
+        autocomplete="email">
+
+
+      <input
+        id="password"
+        type="password"
+        placeholder="Senha"
+        autocomplete="current-password">
+
+
+      <button
+        id="login"
+        class="btn-primary">
+
+        Entrar
+
+      </button>
+
+
+      <p
+        id="login-message"
+        class="message">
+      </p>
+
+    </section>
+
+
+    <!-- ===================================================
+         DASHBOARD
+         =================================================== -->
+
+    <section
+      id="dashboard"
+      class="hidden">
+
+
+      <div class="dashboard-head">
+
+        <div>
+
+          <h2>
+            Visão geral
+          </h2>
+
+          <p id="today-label"></p>
+
+        </div>
+
+
+        <button
+          id="refresh"
+          class="btn-ghost dark">
+
+          ↻ Atualizar
+
+        </button>
+
+      </div>
+
+
+      <!-- ESTATÍSTICAS -->
+
+      <div class="stats-grid">
+
+
+        <div class="stat-card">
+
+          <span>
+            📦 Pedidos
+          </span>
+
+          <strong id="stat-orders">
+            0
+          </strong>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <span>
+            🍱 Marmitas
+          </span>
+
+          <strong id="stat-items">
+            0
+          </strong>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <span>
+            💰 Faturamento
+          </span>
+
+          <strong id="stat-sales">
+            R$ 0,00
+          </strong>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <span>
+            🟢 Loja
+          </span>
+
+          <strong id="stat-store">
+            Aberta
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <!-- PAINÉIS -->
+
+      <div class="grid-2">
+
+
+        <!-- PEDIDOS -->
+
+        <section class="panel">
+
+          <div class="panel-head">
+
+            <h3>
+              Pedidos recentes
+            </h3>
+
+            <span id="orders-count">
+            </span>
+
+          </div>
+
+
+          <div
+            id="orders-list"
+            class="orders-list">
+
+            <div class="empty">
+              Nenhum pedido encontrado.
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- VENDAS -->
+
+        <section class="panel">
+
+          <div class="panel-head">
+
+            <h3>
+              Vendas por pagamento
+            </h3>
+
+          </div>
+
+
+          <div class="payment-list">
+
+
+            <div>
+
+              <span>
+                PIX
+              </span>
+
+              <strong id="sales-pix">
+                R$ 0,00
+              </strong>
+
+            </div>
+
+
+            <div>
+
+              <span>
+                Cartão
+              </span>
+
+              <strong id="sales-card">
+                R$ 0,00
+              </strong>
+
+            </div>
+
+
+            <div>
+
+              <span>
+                Dinheiro
+              </span>
+
+              <strong id="sales-cash">
+                R$ 0,00
+              </strong>
+
+            </div>
+
+
+          </div>
+
+
+          <hr>
+
+
+          <h3 class="mini-title">
+            Produtos vendidos
+          </h3>
+
+
+          <div
+            id="product-sales"
+            class="payment-list">
+          </div>
+
+        </section>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <!-- =====================================================
+       TEMPLATE DE PEDIDO
+       ===================================================== -->
+
+  <template id="order-template">
+
+    <article class="order-card">
+
+
+      <div class="order-top">
+
+        <div>
+
+          <strong class="order-id">
+          </strong>
+
+          <span class="order-time">
+          </span>
+
+        </div>
+
+
+        <span class="order-status">
+        </span>
+
+      </div>
+
+
+      <div class="order-body">
+
+        <strong class="order-client">
+        </strong>
+
+
+        <p class="order-address">
+        </p>
+
+
+        <div class="order-items">
+        </div>
+
+
+        <div class="order-total">
+        </div>
+
+
+        <div class="order-payment">
+        </div>
+
+
+        <p class="order-notes">
+        </p>
+
+      </div>
+
+
+      <div class="order-actions">
+
+
+        <select class="status-select">
+
+          <option>
+            Novo
+          </option>
+
+          <option>
+            Em preparo
+          </option>
+
+          <option>
+            Saiu para entrega
+          </option>
+
+          <option>
+            Concluído
+          </option>
+
+          <option>
+            Cancelado
+          </option>
+
+        </select>
+
+
+        <button
+          class="save-status btn-primary">
+
+          Salvar status
+
+        </button>
+
+      </div>
+
+
+    </article>
+
+  </template>
+
+
+  <!-- =====================================================
+       FIREBASE
+       ===================================================== -->
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+
+  <script src="firebase-config.js"></script>
+
+  <script src="admin.js"></script>
+
+</body>
+
+</html>
