@@ -1,73 +1,44 @@
 /*
  * ============================================================
  * COMIDA NA CHAPA
- * CONFIGURAÇÃO DO FIREBASE + CONFIGURAÇÃO DA LOJA
+ * CONFIGURAÇÃO DO FIREBASE
  * ============================================================
- *
- * Este arquivo é usado pelo:
- *
- * index.html
- * admin.html
- *
- * ------------------------------------------------------------
- * FIREBASE
- * ------------------------------------------------------------
- *
- * 1. Entre no Firebase Console.
- * 2. Abra seu projeto.
- * 3. Vá em Configurações do projeto.
- * 4. Adicione/abra seu aplicativo Web.
- * 5. Copie a configuração do Firebase.
- *
- * IMPORTANTE:
- *
- * A configuração Web do Firebase pode aparecer no código
- * público do site.
- *
- * A segurança deve ser feita pelas REGRAS do Firebase.
- *
  */
 
-
-/* ============================================================
-   CONFIGURAÇÃO FIREBASE
-   ============================================================ */
-
 const firebaseConfig = {
-
-  apiKey: "COLOQUE_SUA_API_KEY",
+  apiKey: "AIzaSyD8gwCWqmadN58DwXH5fYh47iI5tZUoAqk",
 
   authDomain:
-    "SEU-PROJETO.firebaseapp.com",
+    "comida-na-chapa.firebaseapp.com",
 
   databaseURL:
-    "https://SEU-PROJETO-default-rtdb.firebaseio.com",
+    "https://comida-na-chapa-default-rtdb.firebaseio.com",
 
   projectId:
-    "SEU-PROJETO",
+    "comida-na-chapa",
 
   storageBucket:
-    "SEU-PROJETO.firebasestorage.app",
+    "comida-na-chapa.firebasestorage.app",
 
   messagingSenderId:
-    "SEU_MESSAGING_SENDER_ID",
+    "18226994391",
 
   appId:
-    "SEU_APP_ID"
-
+    "1:18226994391:web:238cf2225ebee38521e492"
 };
 
 
-/* ============================================================
-   CONFIGURAÇÃO DA LOJA
-   ============================================================ */
+/*
+ * ============================================================
+ * CONFIGURAÇÕES DA LOJA
+ * ============================================================
+ */
 
 const CONFIG = {
 
   loja: {
 
-    nome:
-      "Comida na Chapa",
+    nome: "Comida na Chapa",
 
     descricao:
       "Comida caseira feita na chapa"
@@ -75,39 +46,16 @@ const CONFIG = {
   },
 
 
-  /* ==========================================================
-     CONTATO
-     ========================================================== */
-
   contato: {
-
-    /*
-     * Número do WhatsApp:
-     *
-     * Brasil:
-     * 55 + DDD + número
-     *
-     * Exemplo:
-     * 5596984352841
-     */
 
     whatsapp:
       "5596984352841",
 
-
-    /*
-     * Chave PIX
-     */
-
     pix:
-      "96984352841"
+      "5596984352841"
 
   },
 
-
-  /* ==========================================================
-     PRODUTOS
-     ========================================================== */
 
   produtos: {
 
@@ -172,10 +120,6 @@ const CONFIG = {
 
   },
 
-
-  /* ==========================================================
-     TAXAS DE ENTREGA
-     ========================================================== */
 
   taxasEntrega: {
 
