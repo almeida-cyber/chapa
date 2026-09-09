@@ -21,7 +21,7 @@ const CONFIG = {
   pixKey: "5596984352841",
   produtos: [
     { id: "calabresa", nome: "Marmita de Calabresa", descricao: "Calabresa na chapa com acompanhamento.", preco: 25, imagem: "img/calabresa.svg", disponivel: true },
-    { id: "carne", nome: "Marmita de Carne", descricao: "Carne na chapa com acompanhamento.", preco: 25, imagem: "img/marmita de carne", disponivel: true },
+    { id: "carne", nome: "Marmita de Carne", descricao: "Carne na chapa com acompanhamento.", preco: 25, imagem: "marmita de carne.png", disponivel: true },
     { id: "frango", nome: "Marmita de Frango", descricao: "Frango na chapa com acompanhamento.", preco: 25, imagem: "img/frango.svg", disponivel: true }
   ],
   taxas: {
