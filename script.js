@@ -12,25 +12,15 @@ const items = {
   frango: { name: "Marmita de Frango", price: 25, qty: 0 }
 };
 
-// --- CONFIGURAÇÃO DO FIREBASE (COLE AS SUAS CHAVES AQUI) ---
-const firebaseConfig = {
-  // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
+// --- CONFIGURAÇÃO DO FIREBASE (SUAS CREDENCIAIS REAIS) ---
 const firebaseConfig = {
   apiKey: "AIzaSyD8gwCWqmadN58DwXH5fYh47iI5tZUoAqk",
   authDomain: "comida-na-chapa.firebaseapp.com",
+  databaseURL: "https://comida-na-chapa-default-rtdb.firebaseio.com",
   projectId: "comida-na-chapa",
   storageBucket: "comida-na-chapa.firebasestorage.app",
   messagingSenderId: "18226994391",
   appId: "1:18226994391:web:238cf2225ebee38521e492"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
 };
 
 // Inicializa a conexão com a nuvem do Firebase
