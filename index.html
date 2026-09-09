@@ -3,134 +3,381 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#d9381e">
+
   <title>Comida na Chapa - Cardápio Digital</title>
+
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-  <header>
-    <!-- 3 cliques no título abrem o painel da proprietária -->
-    <h1 onclick="secretClick()" style="cursor: pointer;">Comida na Chapa</h1>
-    <div id="status-badge" class="status-badge open">🟢 Aberto para Pedidos</div>
+  <header class="site-header">
+
+    <div class="brand">
+
+      <div class="brand-icon">
+        🍱
+      </div>
+
+      <div>
+        <h1 id="store-name">
+          Comida na Chapa
+        </h1>
+
+        <p>
+          Comida caseira feita na chapa
+        </p>
+      </div>
+
+    </div>
+
+    <div id="status-badge" class="status-badge open">
+      🟢 Aberto para pedidos
+    </div>
+
   </header>
 
+
   <main class="container">
-    <h2>Nosso Cardápio</h2>
 
-    <!-- Marmita Calabresa -->
-    <div class="card">
-      <img src="marmita de calabresa.png" alt="Marmita de Calabresa" class="card-img">
-      <div class="card-info">
-        <h3>Marmita de Calabresa</h3>
-        <p>Acompanha arroz, salada e farofa.</p>
-        <span class="price">R$ 25,00</span>
-      </div>
-      <div class="qty-controls">
-        <button onclick="changeQty('calabresa', -1)">-</button>
-        <span id="qty-calabresa">0</span>
-        <button onclick="changeQty('calabresa', 1)">+</button>
-      </div>
-    </div>
+    <section class="hero">
 
-    <!-- Marmita Carne -->
-    <div class="card">
-      <img src="img/carne.jpg" alt="Marmita de Carne" class="card-img">
-      <div class="card-info">
-        <h3>Marmita de Carne</h3>
-        <p>Acompanha arroz, salada e farofa.</p>
-        <span class="price">R$ 25,00</span>
-      </div>
-      <div class="qty-controls">
-        <button onclick="changeQty('carne', -1)">-</button>
-        <span id="qty-carne">0</span>
-        <button onclick="changeQty('carne', 1)">+</button>
-      </div>
-    </div>
+      <span class="eyebrow">
+        CARDÁPIO DIGITAL
+      </span>
 
-    <!-- Marmita Frango -->
-    <div class="card">
-      <img src="img/frango.jpg" alt="Marmita de Frango" class="card-img">
-      <div class="card-info">
-        <h3>Marmita de Frango</h3>
-        <p>Acompanha arroz, salada e farofa.</p>
-        <span class="price">R$ 25,00</span>
-      </div>
-      <div class="qty-controls">
-        <button onclick="changeQty('frango', -1)">-</button>
-        <span id="qty-frango">0</span>
-        <button onclick="changeQty('frango', 1)">+</button>
-      </div>
-    </div>
+      <h2>
+        Escolha sua marmita
+      </h2>
 
-    <!-- Formulário de Finalização do Pedido -->
-    <section class="checkout-form">
-      <h2>Dados para Pedido</h2>
+      <p>
+        Selecione os itens, informe os dados e envie seu pedido pelo WhatsApp.
+      </p>
 
-      <div class="form-group">
-        <label for="name">Seu Nome:</label>
-        <input type="text" id="name" placeholder="Digite seu nome completo">
-      </div>
-
-      <div class="form-group">
-        <label for="order-type">Tipo de Pedido:</label>
-        <select id="order-type" onchange="toggleOrderType()">
-          <option value="Entrega">🛵 Entrega</option>
-          <option value="Retirada">🛍️ Retirada no Local</option>
-        </select>
-      </div>
-
-      <!-- Bloco de Endereço com Seleção de Bairro -->
-      <div id="address-group" class="form-group">
-        <label for="bairro">Bairro / Região de Entrega:</label>
-        <select id="bairro" onchange="updateTotal()">
-          <option value="Água Fria">Água Fria (R$ 3,00)</option>
-          <option value="Pedra Branca">Pedra Branca (R$ 5,00)</option>
-        </select>
-
-        <label for="address">Endereço (Rua, Número, Ponto de Referência):</label>
-        <input type="text" id="address" placeholder="Ex: Rua A, nº 123">
-      </div>
-
-      <div class="form-group">
-        <label for="payment">Forma de Pagamento:</label>
-        <select id="payment" onchange="togglePayment()">
-          <option value="PIX">PIX</option>
-          <option value="Cartão">Cartão (Débito/Crédito)</option>
-          <option value="Dinheiro">Dinheiro</option>
-        </select>
-      </div>
-
-      <div id="troco-group" class="form-group" style="display: none;">
-        <label for="troco">Precisa de troco para quanto?</label>
-        <input type="text" id="troco" placeholder="Ex: Troco para R$ 50,00">
-      </div>
-
-      <div id="pix-info-group" class="form-group" style="display: none;">
-        <p class="pix-info">Chave PIX (Celular): <strong>5596984352841</strong></p>
-      </div>
-
-      <div class="form-group">
-        <label for="notes">Observações (opcional):</label>
-        <textarea id="notes" placeholder="Ex: Sem salada, capricha na farofa..."></textarea>
-      </div>
-
-      <div class="total-summary">
-        <p>Subtotal: <span id="subtotal-price">R$ 0,00</span></p>
-        <p>Taxa de Entrega: <span id="delivery-fee">R$ 0,00</span></p>
-        <h3>Total: <span id="total-price">R$ 0,00</span></h3>
-      </div>
-
-      <button id="btn-order" onclick="sendOrder()" class="btn-submit">
-        Enviar Pedido pelo WhatsApp
-      </button>
     </section>
+
+
+    <!-- CARDÁPIO -->
+    <section
+      id="menu-list"
+      class="menu-list"
+      aria-label="Cardápio">
+    </section>
+
+
+    <!-- CHECKOUT -->
+    <section class="checkout-form">
+
+      <div class="section-title">
+
+        <span>📝</span>
+
+        <div>
+
+          <h2>
+            Dados para o pedido
+          </h2>
+
+          <p>
+            Preencha os dados abaixo.
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="form-grid">
+
+        <!-- NOME -->
+        <div class="form-group full">
+
+          <label for="name">
+            Seu nome *
+          </label>
+
+          <input
+            type="text"
+            id="name"
+            placeholder="Digite seu nome completo"
+            autocomplete="name">
+
+        </div>
+
+
+        <!-- TIPO DE PEDIDO -->
+        <div class="form-group">
+
+          <label for="order-type">
+            Tipo de pedido *
+          </label>
+
+          <select id="order-type">
+
+            <option value="Entrega">
+              🛵 Entrega
+            </option>
+
+            <option value="Retirada">
+              🛍️ Retirada no local
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <!-- BAIRRO -->
+        <div class="form-group">
+
+          <label for="bairro">
+            Bairro / Região *
+          </label>
+
+          <select id="bairro"></select>
+
+        </div>
+
+
+        <!-- ENDEREÇO -->
+        <div
+          id="address-group"
+          class="form-group full">
+
+          <label for="address">
+            Endereço *
+          </label>
+
+          <input
+            type="text"
+            id="address"
+            placeholder="Rua, número e ponto de referência"
+            autocomplete="street-address">
+
+        </div>
+
+
+        <!-- PAGAMENTO -->
+        <div class="form-group">
+
+          <label for="payment">
+            Forma de pagamento *
+          </label>
+
+          <select id="payment">
+
+            <option value="PIX">
+              PIX
+            </option>
+
+            <option value="Cartão">
+              Cartão (Débito/Crédito)
+            </option>
+
+            <option value="Dinheiro">
+              Dinheiro
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <!-- TROCO -->
+        <div
+          id="troco-group"
+          class="form-group hidden">
+
+          <label for="troco">
+            Troco para quanto?
+          </label>
+
+          <input
+            type="text"
+            id="troco"
+            placeholder="Ex.: R$ 50,00">
+
+        </div>
+
+
+        <!-- PIX -->
+        <div
+          id="pix-info-group"
+          class="form-group full hidden">
+
+          <div class="pix-box">
+
+            <span>
+              🔑
+            </span>
+
+            <div>
+
+              <strong>
+                Chave PIX
+              </strong>
+
+              <p id="pix-key">
+                Configure no firebase-config.js
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              id="copy-pix"
+              class="btn-secondary">
+
+              Copiar
+
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <!-- OBSERVAÇÕES -->
+        <div class="form-group full">
+
+          <label for="notes">
+            Observações
+          </label>
+
+          <textarea
+            id="notes"
+            rows="3"
+            placeholder="Ex.: sem salada, capricha na farofa..."></textarea>
+
+        </div>
+
+      </div>
+
+
+      <!-- RESUMO -->
+      <div class="total-summary">
+
+        <div>
+
+          <span>
+            Itens
+          </span>
+
+          <strong id="items-count">
+            0
+          </strong>
+
+        </div>
+
+
+        <div>
+
+          <span>
+            Subtotal
+          </span>
+
+          <strong id="subtotal-price">
+            R$ 0,00
+          </strong>
+
+        </div>
+
+
+        <div>
+
+          <span>
+            Taxa de entrega
+          </span>
+
+          <strong id="delivery-fee">
+            R$ 0,00
+          </strong>
+
+        </div>
+
+
+        <div class="total-row">
+
+          <span>
+            Total
+          </span>
+
+          <strong id="total-price">
+            R$ 0,00
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <!-- BOTÃO PEDIDO -->
+      <button
+        id="btn-order"
+        class="btn-submit"
+        type="button">
+
+        📲 Enviar pedido pelo WhatsApp
+
+      </button>
+
+
+      <p
+        id="order-feedback"
+        class="feedback"
+        role="status">
+      </p>
+
+    </section>
+
   </main>
 
-  <!-- SDKs do Firebase -->
+
+  <!-- CARRINHO FIXO -->
+  <div id="cart-bar" class="cart-bar">
+
+    <div>
+
+      <small>
+        Seu pedido
+      </small>
+
+      <strong id="cart-total">
+        R$ 0,00
+      </strong>
+
+    </div>
+
+    <button
+      type="button"
+      id="go-checkout">
+
+      Finalizar
+
+    </button>
+
+  </div>
+
+
+  <footer>
+
+    <p>
+      Comida na Chapa • Cardápio Digital
+    </p>
+
+  </footer>
+
+
+  <!-- FIREBASE -->
+
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
-  <!-- Arquivo de lógica principal -->
+  <script src="firebase-config.js"></script>
+
   <script src="script.js"></script>
+
 </body>
 </html>
