@@ -34,24 +34,48 @@ async function login(e){
   }
 }
 
-function startDashboard(){
+function startDashboard() {
+
+  // Status da loja
   db.ref("configuracoes/lojaAberta").on("value", snap => {
     const open = snap.exists() ? snap.val() === true : true;
+
     const btn = $("storeToggle");
+
     btn.textContent = open ? "● Aberta" : "● Fechada";
     btn.className = open ? "open" : "";
   });
 
-  db.ref("pedidos").orderByChild("criadoEm").limitToLast(100).on("value", snap => {
-    ordersCache = snap.val() || {};
-    $("connection").textContent = "● conectado";
-    renderDashboard();
-  }, error => {
-    console.error(error);
-    $("connection").textContent = "● erro";
-  });
-}
+  // Monitorar conexão com Firebase
+  db.ref(".info/connected").on("value", snap => {
+    const conectado = snap.val() === true;
 
+    $("connection").textContent =
+      conectado ? "● conectado" : "● desconectado";
+
+    $("connection").className =
+      conectado ? "connected" : "disconnected";
+  });
+
+  // PEDIDOS EM TEMPO REAL
+  db.ref("pedidos")
+    .orderByChild("criadoEm")
+    .limitToLast(100)
+    .on("value", snap => {
+
+      console.log("🔥 Firebase atualizou os pedidos");
+
+      ordersCache = snap.val() || {};
+
+      renderDashboard();
+
+    }, error => {
+
+      console.error("Erro Firebase:", error);
+
+      $("connection").textContent = "● erro Firebase";
+    });
+}
 async function toggleStore(){
   const current = $("storeToggle").classList.contains("open");
   try{ await db.ref("configuracoes/lojaAberta").set(!current); }
