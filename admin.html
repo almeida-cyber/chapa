@@ -35,9 +35,17 @@
 
     <div class="admin-container">
       <section class="dashboard-head">
-        <div><h1>Dashboard</h1><p>Acompanhe os pedidos em tempo real.</p></div>
-        <div class="store-control"><span>Status da loja</span><button id="storeToggle">Carregando...</button></div>
+        <div>
+          <h1>Dashboard</h1>
+          <p>Acompanhe os pedidos em tempo real.</p>
+        </div>
+        <div class="store-control">
+          <span>Status da loja</span>
+          <button id="storeToggle">Carregando...</button>
+        </div>
       </section>
+
+      <div id="firebaseError" class="error" style="margin:0 0 18px;"></div>
 
       <section class="stats">
         <article><span>Pedidos hoje</span><strong id="statOrders">0</strong></article>
