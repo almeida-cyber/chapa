@@ -184,7 +184,7 @@ async function submitOrder(event){
   const pedidoId = createOrderId();
   const order = {
     id: pedidoId,
-    criadoEm: new Date().toISOString(),
+    criadoEm: new Date().toLocaleString("en-US", { hour12: false, timeZone: "America/Belem" }),
     status: "Novo",
     cliente: {
       nome: $("customerName").value.trim(),
