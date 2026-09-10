@@ -257,10 +257,10 @@ function renderOrders(orders) {
 
      <div class="order-footer" style="display: flex; gap: 8px; align-items: center; justify-content: space-between;">
         <select onchange="updateStatus('${escAttr(order.id)}', this.value)">
-          ${["Novo", "Em preparo", "Saiu para entrega", "Concluído", "Cancelado"].map(status => `
-            <option ${status === order.status ? "selected" : ""}>${status}</option>
-          `).join("")}
-        </select>
+  ${["Novo", "Em preparo", "Pronto para retirada", "Saiu para entrega", "Concluído", "Cancelado"].map(status => `
+    <option ${status === order.status ? "selected" : ""}>${status}</option>
+  `).join("")}
+</select>
 
         <button onclick="sendWhatsappNotification('${escAttr(order.id)}')" style="background-color: #25D366; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">
           📲 Avisar Cliente
@@ -522,30 +522,32 @@ window.sendWhatsappNotification = function(id) {
   let phone = (order.cliente?.telefone || "").replace(/\D/g, "");
   
   if (!phone) {
-    const input = prompt(`Telefone não encontrado para ${order.cliente?.nome || "o cliente"}.\nDigite o WhatsApp com DDD (ex: 96981234567):`);
+    const input = prompt(`Telefone não encontrado para ${order.cliente?.nome || "o cliente"}.\nDigite o WhatsApp com DDD:`);
     if (!input) return;
     phone = input.replace(/\D/g, "");
   }
 
-  // Adiciona '55' no telefone do cliente se não houver
+  // Garante o DDD 55 do Brasil
   if (phone && !phone.startsWith("55") && phone.length <= 11) {
     phone = "55" + phone;
   }
 
   let text = "";
 
+  // Filtro estrito: só aceita estes 3 status
   switch (order.status) {
     case "Em preparo":
-      text = `Olá *${order.cliente?.nome || "Cliente"}*! 👨‍🍳 Seu pedido *${order.id}* já está em preparo na cozinha!`;
+      text = `Olá *${order.cliente?.nome || "Cliente"}*! 👨‍🍳 Seu pedido *${order.id}* está sendo preparado!`;
       break;
     case "Saiu para entrega":
-      text = `Olá *${order.cliente?.nome || "Cliente"}*! 🛵💨 Seu pedido *${order.id}* acabou de sair para entrega e logo chegará aí!`;
+      text = `Olá *${order.cliente?.nome || "Cliente"}*! 🛵💨 Seu pedido *${order.id}* já está sendo entregue!`;
       break;
-    case "Concluído":
-      text = `Olá *${order.cliente?.nome || "Cliente"}*! ✅ Seu pedido *${order.id}* foi entregue. Bom apetite e obrigado pela preferência!`;
+    case "Pronto para retirada":
+      text = `Olá *${order.cliente?.nome || "Cliente"}*! 🏪 Seu pedido *${order.id}* está pronto para a retirada!`;
       break;
     default:
-      text = `Olá *${order.cliente?.nome || "Cliente"}*! O status do seu pedido *${order.id}* foi atualizado para: *${order.status}*.`;
+      // Impede o envio para 'Novo', 'Concluído' ou 'Cancelado'
+      return alert("Notificações via WhatsApp estão disponíveis apenas para: Em preparo, Saiu para entrega e Pronto para retirada.");
   }
 
   const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
