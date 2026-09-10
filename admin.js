@@ -3,6 +3,7 @@ let db = null;
 let ordersQuery = null;
 let storeRef = null;
 let connectionRef = null;
+let resetRef = null;
 let ordersCache = {};
 let shiftStart = 0;
 
@@ -43,7 +44,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     $("loginForm").addEventListener("submit", login);
     $("logout").addEventListener("click", () => auth.signOut());
-    $("btnExport").addEventListener("click", exportToCSV);
+    
+    // Eventos dos botões de ação do Dashboard
+    if ($("btnExport")) $("btnExport").addEventListener("click", exportToCSV);
+    if ($("btnPrint")) $("btnPrint").addEventListener("click", printReport);
+    if ($("btnReset")) $("btnReset").addEventListener("click", resetDashboard);
+    
     $("storeToggle").addEventListener("click", toggleStore);
   } catch (error) {
     console.error("Erro ao iniciar Firebase:", error);
@@ -91,6 +97,15 @@ function startDashboard() {
     setConnection("● erro de conexão", "error");
   });
 
+  // Escuta a última vez que o painel foi zerado
+  resetRef = db.ref("configuracoes/ultimoReset");
+  resetRef.on("value", snapshot => {
+    shiftStart = snapshot.val() || 0;
+    renderDashboard();
+  }, error => {
+    console.error("Erro ao acompanhar ultimoReset:", error);
+  });
+
   // Status da loja em tempo real.
   storeRef = db.ref("configuracoes/lojaAberta");
   storeRef.on("value", snapshot => {
@@ -104,7 +119,6 @@ function startDashboard() {
   });
 
   // PEDIDOS: listener permanente do Realtime Database.
-  // O listener dispara novamente sempre que um pedido é criado, alterado ou removido.
   ordersQuery = db.ref("pedidos").orderByChild("criadoEm").limitToLast(100);
   ordersQuery.on("value", snapshot => {
     ordersCache = snapshot.val() || {};
@@ -140,6 +154,11 @@ function stopDashboard() {
   if (connectionRef) {
     connectionRef.off();
     connectionRef = null;
+  }
+
+  if (resetRef) {
+    resetRef.off();
+    resetRef = null;
   }
 
   ordersCache = {};
@@ -182,8 +201,12 @@ function renderDashboard() {
     return dbValue - da;
   });
 
-  const today = localDateKey();
-  const todayOrders = orders.filter(order => orderDateKey(order.criadoEm) === today);
+  // Filtra apenas os pedidos realizados a partir do último encerramento de expediente (shiftStart)
+  const todayOrders = orders.filter(order => {
+    const orderTime = new Date(order.criadoEm || 0).getTime();
+    return orderTime >= shiftStart;
+  });
+  
   const valid = todayOrders.filter(order => order.status !== "Cancelado");
 
   const meals = valid.reduce((sum, order) => {
@@ -320,14 +343,13 @@ function esc(value) {
 function escAttr(value) {
   return esc(value).replace(/'/g, "&#039;");
 }
+
 function exportToCSV() {
   const orders = Object.values(ordersCache);
   if (!orders.length) return alert("Nenhum pedido para exportar.");
 
-  // Cabeçalho da planilha
   let csv = "Data,ID,Cliente,Pagamento,Entrega,Status,Total\n";
 
-  // Preenchendo as linhas com os pedidos
   orders.forEach(order => {
     const data = formatDate(order.criadoEm);
     const id = order.id || "";
@@ -340,7 +362,6 @@ function exportToCSV() {
     csv += `"${data}","${id}","${cliente}","${pagamento}","${entrega}","${status}","${total}"\n`;
   });
 
-  // Criando e baixando o arquivo
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -349,4 +370,148 @@ function exportToCSV() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+async function resetDashboard() {
+  if (!auth?.currentUser) {
+    alert("Sua sessão do administrador expirou.");
+    return;
+  }
+
+  if (confirm("Deseja encerrar o expediente e zerar o painel para o próximo dia?\n\nTodo o histórico continuará salvo no Firebase.")) {
+    try {
+      await db.ref("configuracoes/ultimoReset").set(Date.now());
+      console.log("Expediente zerado!");
+    } catch (error) {
+      console.error("Erro ao zerar expediente:", error);
+      alertFirebaseError("zerar expediente", error);
+    }
+  }
+}
+
+function printReport() {
+  const orders = Object.values(ordersCache).sort((a, b) => {
+    const da = new Date(a?.criadoEm || 0).getTime();
+    const dbValue = new Date(b?.criadoEm || 0).getTime();
+    return dbValue - da;
+  });
+
+  const currentOrders = orders.filter(order => new Date(order.criadoEm || 0).getTime() >= shiftStart);
+  const valid = currentOrders.filter(order => order.status !== "Cancelado");
+
+  if (!valid.length) {
+    alert("Nenhum pedido válido encontrado neste expediente para imprimir.");
+    return;
+  }
+
+  const meals = valid.reduce((sum, order) => sum + (order.itens || []).reduce((t, i) => t + Number(i.quantidade || 0), 0), 0);
+  const sales = valid.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const ticket = valid.length ? sales / valid.length : 0;
+
+  const paymentsObj = {};
+  valid.forEach(order => {
+    const p = order.pagamento || "Não informado";
+    paymentsObj[p] = (paymentsObj[p] || 0) + Number(order.total || 0);
+  });
+
+  const productsObj = {};
+  valid.forEach(order => (order.itens || []).forEach(item => {
+    const name = item.nome || "Produto";
+    productsObj[name] = (productsObj[name] || 0) + Number(item.quantidade || 0);
+  }));
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8">
+        <title>Relatório do Expediente - Comida na Chapa</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; color: #333; line-height: 1.4; }
+          h1 { text-align: center; margin-bottom: 5px; font-size: 22px; }
+          .subtitle { text-align: center; color: #666; font-size: 13px; margin-bottom: 20px; }
+          .metrics-grid { display: flex; justify-content: space-between; margin-bottom: 20px; gap: 10px; }
+          .metric-card { flex: 1; border: 1px solid #ccc; padding: 10px; text-align: center; border-radius: 6px; background: #fafafa; }
+          .metric-card span { font-size: 11px; color: #666; text-transform: uppercase; display: block; }
+          .metric-card strong { font-size: 18px; color: #000; display: block; margin-top: 4px; }
+          .section-title { font-size: 15px; font-weight: bold; margin-top: 20px; margin-bottom: 8px; border-bottom: 2px solid #2196F3; padding-bottom: 4px; }
+          .columns { display: flex; gap: 20px; margin-bottom: 15px; }
+          .column { flex: 1; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+          th { background-color: #f2f2f2; font-weight: bold; }
+          tr:nth-child(even) { background-color: #f9f9f9; }
+        </style>
+      </head>
+      <body>
+        <h1>Comida na Chapa — Relatório do Expediente</h1>
+        <div class="subtitle">Gerado em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Belem" })}</div>
+
+        <div class="metrics-grid">
+          <div class="metric-card"><span>Pedidos Concluídos</span><strong>${valid.length}</strong></div>
+          <div class="metric-card"><span>Marmitas Vendidas</span><strong>${meals}</strong></div>
+          <div class="metric-card"><span>Faturamento Total</span><strong>${money(sales)}</strong></div>
+          <div class="metric-card"><span>Ticket Médio</span><strong>${money(ticket)}</strong></div>
+        </div>
+
+        <div class="columns">
+          <div class="column">
+            <div class="section-title">Vendas por Pagamento</div>
+            <table>
+              <thead><tr><th>Forma</th><th>Total</th></tr></thead>
+              <tbody>
+                ${Object.entries(paymentsObj).map(([k, v]) => `<tr><td>${esc(k)}</td><td><strong>${money(v)}</strong></td></tr>`).join("")}
+              </tbody>
+            </table>
+          </div>
+          <div class="column">
+            <div class="section-title">Produtos Vendidos</div>
+            <table>
+              <thead><tr><th>Item</th><th>Qtd.</th></tr></thead>
+              <tbody>
+                ${Object.entries(productsObj).map(([k, v]) => `<tr><td>${esc(k)}</td><td><strong>${v} un.</strong></td></tr>`).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="section-title">Detalhamento dos Pedidos</div>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Data/Hora</th>
+              <th>Cliente</th>
+              <th>Recebimento</th>
+              <th>Pagamento</th>
+              <th>Status</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${valid.map(o => `
+              <tr>
+                <td>${esc(o.id)}</td>
+                <td>${formatDate(o.criadoEm)}</td>
+                <td>${esc(o.cliente?.nome || "")}</td>
+                <td>${esc(o.cliente?.recebimento || "")}</td>
+                <td>${esc(o.pagamento || "")}</td>
+                <td>${esc(o.status || "")}</td>
+                <td><strong>${money(o.total)}</strong></td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+
+        <script>
+          window.onload = function() { window.print(); }
+        </script>
+      </body>
+    </html>
+  `;
+
+  const printWin = window.open('', '_blank');
+  if (!printWin) return alert("Por favor, permita pop-ups no navegador para visualizar o relatório.");
+  printWin.document.write(html);
+  printWin.document.close();
 }
