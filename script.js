@@ -150,7 +150,12 @@ async function submitOrder(event){
     return;
   }
 
+  // Leitura segura dos dados do formulário
+  const customerName = document.getElementById("customerName")?.value.trim() || "Cliente";
+  const phone = document.getElementById("telefone")?.value.trim() || "";
   const deliveryType = document.querySelector('input[name="deliveryType"]:checked').value;
+  
+  const recebimento = deliveryType === "delivery" ? "Entrega" : "Retirada";
   const neighborhood = deliveryType === "delivery" ? $("neighborhood").value : "Retirada";
   const address = deliveryType === "delivery" ? $("address").value.trim() : "Retirada no local";
   const payment = $("payment").value;
@@ -186,14 +191,13 @@ async function submitOrder(event){
     id: pedidoId,
     criadoEm: new Date().toLocaleString("en-US", { hour12: false, timeZone: "America/Belem" }),
     status: "Novo",
-
-cliente: {
-  nome: document.getElementById("nome")?.value.trim() || "",
-  telefone: document.getElementById("telefone")?.value.trim() || "",
-  recebimento: recebimento,
-  bairro: bairro,
-  endereco: endereco
-},
+    cliente: {
+      nome: customerName,
+      telefone: phone,
+      recebimento: recebimento,
+      bairro: neighborhood,
+      endereco: address
+    },
     pagamento: payment,
     trocoPara: changeFor,
     observacoes: $("notes").value.trim(),
@@ -224,7 +228,6 @@ cliente: {
   updateSummary();
   message.textContent = `Pedido ${pedidoId} registrado! O WhatsApp foi aberto.`;
 }
-
 function buildWhatsAppText(order) {
   const lines = [
     `*🍳 COMIDA NA CHAPA*`,
