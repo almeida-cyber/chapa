@@ -26,6 +26,6 @@ const CONFIG = {
   ],
   taxas: {
     "Água Fria": 3,
-    "Pedra Branca": 5
+    "Pedra Branca": 8,
   }
 };
