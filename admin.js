@@ -521,14 +521,14 @@ window.sendWhatsappNotification = function(id) {
 
   let phone = (order.cliente?.telefone || "").replace(/\D/g, "");
   
-  // Se o pedido não tiver telefone salvo, solicita o número ao operador
   if (!phone) {
     const input = prompt(`Telefone não encontrado para ${order.cliente?.nome || "o cliente"}.\nDigite o WhatsApp com DDD (ex: 96981234567):`);
     if (!input) return;
     phone = input.replace(/\D/g, "");
   }
 
-  if (!phone.startsWith("55") && phone.length <= 11) {
+  // Se o número não começar com 55, adiciona o 55 do Brasil automaticamente
+  if (!phone.startsWith("55")) {
     phone = "55" + phone;
   }
 
