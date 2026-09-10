@@ -17,8 +17,8 @@ const CONFIG = {
     nome: "Comida na Chapa",
     descricao: "Quentinha, saborosa e feita na hora"
   },
-  whatsappNumber: "5596984352841",
-  pixKey: "5596984352841",
+  whatsappNumber: "96984352841",
+  pixKey: "96984352841",
   produtos: [
     { id: "calabresa", nome: "Marmita de Calabresa", descricao: "Calabresa na chapa com acompanhamento.", preco: 25, imagem: "marmita de calabresa.png", disponivel: true },
     { id: "carne", nome: "Marmita de Carne", descricao: "Carne na chapa com acompanhamento.", preco: 25, imagem: "marmita de carne.png", disponivel: true },
