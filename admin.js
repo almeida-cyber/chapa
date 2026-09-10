@@ -42,6 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     $("loginForm").addEventListener("submit", login);
     $("logout").addEventListener("click", () => auth.signOut());
+    $("btnExport").addEventListener("click", exportToCSV);
     $("storeToggle").addEventListener("click", toggleStore);
   } catch (error) {
     console.error("Erro ao iniciar Firebase:", error);
@@ -317,4 +318,34 @@ function esc(value) {
 
 function escAttr(value) {
   return esc(value).replace(/'/g, "&#039;");
+}
+function exportToCSV() {
+  const orders = Object.values(ordersCache);
+  if (!orders.length) return alert("Nenhum pedido para exportar.");
+
+  // Cabeçalho da planilha
+  let csv = "Data,ID,Cliente,Pagamento,Entrega,Status,Total\n";
+
+  // Preenchendo as linhas com os pedidos
+  orders.forEach(order => {
+    const data = formatDate(order.criadoEm);
+    const id = order.id || "";
+    const cliente = order.cliente?.nome || "";
+    const pagamento = order.pagamento || "";
+    const entrega = order.cliente?.recebimento || "";
+    const status = order.status || "";
+    const total = order.total || 0;
+
+    csv += `"${data}","${id}","${cliente}","${pagamento}","${entrega}","${status}","${total}"\n`;
+  });
+
+  // Criando e baixando o arquivo
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `relatorio_vendas.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
