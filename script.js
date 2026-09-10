@@ -150,11 +150,23 @@ async function submitOrder(event){
     return;
   }
 
-  // Leitura segura dos dados do formulário
+  // Leitura segura dos dados do formulário pelo ID correto
   const customerName = document.getElementById("customerName")?.value.trim() || "Cliente";
-  const phone = document.getElementById("telefone")?.value.trim() || "";
-  const deliveryType = document.querySelector('input[name="deliveryType"]:checked').value;
+  let rawCustomerPhone = document.getElementById("telefone")?.value.trim() || "";
   
+  // Limpa caracteres e adiciona '55' automático no telefone do cliente
+  let cleanCustomerPhone = rawCustomerPhone.replace(/\D/g, "");
+  if (cleanCustomerPhone && !cleanCustomerPhone.startsWith("55") && cleanCustomerPhone.length <= 11) {
+    cleanCustomerPhone = "55" + cleanCustomerPhone;
+  }
+
+  // Limpa caracteres e adiciona '55' automático no número da loja
+  let storePhone = String(CONFIG.whatsappNumber || "").replace(/\D/g, "");
+  if (storePhone && !storePhone.startsWith("55")) {
+    storePhone = "55" + storePhone;
+  }
+
+  const deliveryType = document.querySelector('input[name="deliveryType"]:checked').value;
   const recebimento = deliveryType === "delivery" ? "Entrega" : "Retirada";
   const neighborhood = deliveryType === "delivery" ? $("neighborhood").value : "Retirada";
   const address = deliveryType === "delivery" ? $("address").value.trim() : "Retirada no local";
@@ -181,6 +193,7 @@ async function submitOrder(event){
   let subtotal = items.reduce((sum,item) => sum + item.preco * item.quantidade, 0);
   const deliveryFee = deliveryType === "delivery" ? Number(CONFIG.taxas[neighborhood] || 0) : 0;
   const total = subtotal + deliveryFee;
+
   if(payment === "Dinheiro" && changeFor < total){
     message.textContent = "O valor do troco precisa ser maior ou igual ao total.";
     return;
@@ -193,7 +206,7 @@ async function submitOrder(event){
     status: "Novo",
     cliente: {
       nome: customerName,
-      telefone: phone,
+      telefone: cleanCustomerPhone,
       recebimento: recebimento,
       bairro: neighborhood,
       endereco: address
@@ -209,16 +222,16 @@ async function submitOrder(event){
 
   const whatsappText = buildWhatsAppText(order);
 
-  try{
+  try {
     if(!db) throw new Error("Firebase não inicializado.");
     await db.ref("pedidos/" + pedidoId).set(order);
-  }catch(error){
+  } catch(error) {
     console.error(error);
-    message.textContent = "Não foi possível registrar o pedido no sistema. Verifique o Firebase e tente novamente.";
+    message.textContent = "Não foi possível registrar o pedido no sistema.";
     return;
   }
 
-  window.open(`https://wa.me/${CONFIG.whatsappNumber}?text=${encodeURIComponent(whatsappText)}`, "_blank");
+  window.open(`https://wa.me/${storePhone}?text=${encodeURIComponent(whatsappText)}`, "_blank");
   cart = {};
   renderMenu();
   $("orderForm").reset();
