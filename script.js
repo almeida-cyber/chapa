@@ -186,12 +186,14 @@ async function submitOrder(event){
     id: pedidoId,
     criadoEm: new Date().toLocaleString("en-US", { hour12: false, timeZone: "America/Belem" }),
     status: "Novo",
-    cliente: {
-      nome: $("customerName").value.trim(),
-      recebimento: deliveryType === "delivery" ? "Entrega" : "Retirada",
-      bairro: neighborhood,
-      endereco: address
-    },
+  // Procure onde o pedido é criado no script.js:
+cliente: {
+  nome: document.getElementById("nome").value.trim(),
+  telefone: document.getElementById("telefone").value.trim(), // <--- COLE ESTA LINHA AQUI
+  recebimento: recebimento,
+  bairro: bairro,
+  endereco: endereco
+},
     pagamento: payment,
     trocoPara: changeFor,
     observacoes: $("notes").value.trim(),
