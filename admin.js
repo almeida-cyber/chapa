@@ -527,8 +527,8 @@ window.sendWhatsappNotification = function(id) {
     phone = input.replace(/\D/g, "");
   }
 
-  // Se o número não começar com 55, adiciona o 55 do Brasil automaticamente
-  if (!phone.startsWith("55")) {
+  // Adiciona '55' no telefone do cliente se não houver
+  if (phone && !phone.startsWith("55") && phone.length <= 11) {
     phone = "55" + phone;
   }
 
