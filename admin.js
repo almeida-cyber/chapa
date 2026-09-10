@@ -519,14 +519,15 @@ window.sendWhatsappNotification = function(id) {
   const order = ordersCache[id];
   if (!order) return alert("Pedido não encontrado.");
 
-  // Tenta pegar o telefone do cliente (remove caracteres não numéricos)
   let phone = (order.cliente?.telefone || "").replace(/\D/g, "");
   
+  // Se o pedido não tiver telefone salvo, solicita o número ao operador
   if (!phone) {
-    return alert("Este pedido não possui número de telefone cadastrado.");
+    const input = prompt(`Telefone não encontrado para ${order.cliente?.nome || "o cliente"}.\nDigite o WhatsApp com DDD (ex: 96981234567):`);
+    if (!input) return;
+    phone = input.replace(/\D/g, "");
   }
 
-  // Adiciona o código do Brasil (55) caso o cliente não tenha digitado
   if (!phone.startsWith("55") && phone.length <= 11) {
     phone = "55" + phone;
   }
