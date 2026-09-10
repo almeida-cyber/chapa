@@ -186,10 +186,10 @@ async function submitOrder(event){
     id: pedidoId,
     criadoEm: new Date().toLocaleString("en-US", { hour12: false, timeZone: "America/Belem" }),
     status: "Novo",
-  // Procure onde o pedido é criado no script.js:
+
 cliente: {
-  nome: document.getElementById("nome").value.trim(),
-  telefone: document.getElementById("telefone").value.trim(), // <--- COLE ESTA LINHA AQUI
+  nome: document.getElementById("nome")?.value.trim() || "",
+  telefone: document.getElementById("telefone")?.value.trim() || "",
   recebimento: recebimento,
   bairro: bairro,
   endereco: endereco
@@ -225,12 +225,13 @@ cliente: {
   message.textContent = `Pedido ${pedidoId} registrado! O WhatsApp foi aberto.`;
 }
 
-function buildWhatsAppText(order){
+function buildWhatsAppText(order) {
   const lines = [
     `*🍳 COMIDA NA CHAPA*`,
     `*Pedido ${order.id}*`,
     ``,
     `*Cliente:* ${order.cliente.nome}`,
+    order.cliente.telefone ? `*Telefone:* ${order.cliente.telefone}` : "",
     `*Recebimento:* ${order.cliente.recebimento}`,
     order.cliente.recebimento === "Entrega" ? `*Bairro:* ${order.cliente.bairro}\n*Endereço:* ${order.cliente.endereco}` : `*Local:* Retirada`,
     ``,
@@ -244,6 +245,7 @@ function buildWhatsAppText(order){
     order.trocoPara ? `Troco para: ${money(order.trocoPara)}` : "",
     order.observacoes ? `Observações: ${order.observacoes}` : ""
   ];
+
   return lines.filter(Boolean).join("\n");
 }
 
