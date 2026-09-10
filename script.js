@@ -259,7 +259,10 @@ function buildWhatsAppText(order) {
     `*TOTAL: ${money(order.total)}*`,
     `Pagamento: ${order.pagamento}`,
     order.trocoPara ? `Troco para: ${money(order.trocoPara)}` : "",
-    order.observacoes ? `Observações: ${order.observacoes}` : ""
+    order.observacoes ? `Observações: ${order.observacoes}` : "",
+    ``,
+    // Se for PIX, insere esta linha em destaque no final do texto enviado à loja:
+    order.pagamento === "PIX" ? `📌 *IMPORTANTE:* Estou enviando o comprovante do PIX a seguir nesta conversa!` : ""
   ];
 
   return lines.filter(Boolean).join("\n");
