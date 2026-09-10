@@ -246,10 +246,16 @@ function buildWhatsAppText(order){
 }
 
 function createOrderId(){
-  const d = new Date();
-  const date = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
-  const random = Math.floor(1000 + Math.random()*9000);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Belem", year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(new Date());
+  
+  const get = type => parts.find(part => part.type === type).value;
+  const date = `${get("year")}${get("month")}${get("day")}`;
+  const random = Math.floor(1000 + Math.random() * 9000);
+  
   return `CN-${date}-${random}`;
 }
+
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 function escapeAttr(s){return escapeHtml(s)}
