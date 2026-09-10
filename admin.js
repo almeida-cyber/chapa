@@ -255,16 +255,16 @@ function renderOrders(orders) {
         ${esc(order.pagamento || "")}
       </div>
 
-      <div class="order-footer">
-        <span class="order-total">
-          ${order.cliente?.endereco ? esc(order.cliente.endereco) : "Retirada"}
-        </span>
-
+     <div class="order-footer" style="display: flex; gap: 8px; align-items: center; justify-content: space-between;">
         <select onchange="updateStatus('${escAttr(order.id)}', this.value)">
           ${["Novo", "Em preparo", "Saiu para entrega", "Concluído", "Cancelado"].map(status => `
             <option ${status === order.status ? "selected" : ""}>${status}</option>
           `).join("")}
         </select>
+
+        <button onclick="sendWhatsappNotification('${escAttr(order.id)}')" style="background-color: #25D366; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">
+          📲 Avisar Cliente
+        </button>
       </div>
     </article>
   `).join("");
@@ -515,3 +515,38 @@ function printReport() {
   printWin.document.write(html);
   printWin.document.close();
 }
+window.sendWhatsappNotification = function(id) {
+  const order = ordersCache[id];
+  if (!order) return alert("Pedido não encontrado.");
+
+  // Tenta pegar o telefone do cliente (remove caracteres não numéricos)
+  let phone = (order.cliente?.telefone || "").replace(/\D/g, "");
+  
+  if (!phone) {
+    return alert("Este pedido não possui número de telefone cadastrado.");
+  }
+
+  // Adiciona o código do Brasil (55) caso o cliente não tenha digitado
+  if (!phone.startsWith("55") && phone.length <= 11) {
+    phone = "55" + phone;
+  }
+
+  let text = "";
+
+  switch (order.status) {
+    case "Em preparo":
+      text = `Olá *${order.cliente?.nome || "Cliente"}*! 👨‍🍳 Seu pedido *${order.id}* já está em preparo na cozinha!`;
+      break;
+    case "Saiu para entrega":
+      text = `Olá *${order.cliente?.nome || "Cliente"}*! 🛵💨 Seu pedido *${order.id}* acabou de sair para entrega e logo chegará aí!`;
+      break;
+    case "Concluído":
+      text = `Olá *${order.cliente?.nome || "Cliente"}*! ✅ Seu pedido *${order.id}* foi entregue. Bom apetite e obrigado pela preferência!`;
+      break;
+    default:
+      text = `Olá *${order.cliente?.nome || "Cliente"}*! O status do seu pedido *${order.id}* foi atualizado para: *${order.status}*.`;
+  }
+
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+  window.open(url, "_blank");
+};
