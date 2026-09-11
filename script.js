@@ -60,14 +60,19 @@ function initFirebase() {
 }
 
 function updateStoreStatus() {
-  const banner = $("storeStatusBanner");
-  if (!banner) return;
+  // Procura pelo elemento do topo ou pelo banner
+  const badge = $("storeBadge") || $("storeStatus") || document.querySelector("[class*='Verificando']");
   
-  if (storeOpen) {
-    banner.style.display = "none";
-  } else {
-    banner.style.display = "block";
-    banner.textContent = "🔴 Estamos fechados no momento. Volte em breve!";
+  if (badge) {
+    if (storeOpen) {
+      badge.textContent = "🟢 Loja Aberta";
+      badge.style.backgroundColor = "#e6f4ea";
+      badge.style.color = "#137333";
+    } else {
+      badge.textContent = "🔴 Loja Fechada";
+      badge.style.backgroundColor = "#fce8e6";
+      badge.style.color = "#c5221f";
+    }
   }
 }
 
