@@ -24,7 +24,7 @@
     <section class="hero">
       <div>
         <span class="eyebrow">CARDÁPIO DIGITAL</span>
-        <h2>Escolha sua marmita</h2>
+        <h2>Escolha sua marmita ou bebida</h2>
         <p>Monte seu pedido e envie diretamente pelo WhatsApp.</p>
       </div>
       <div class="hero-badge">🔥 Feita na chapa</div>
@@ -101,22 +101,18 @@
           <p style="color: #d92323; font-weight: bold; font-size: 0.85rem; margin-top: 6px;">
             ⚠️ ATENÇÃO: Após enviar o pedido, anexe o comprovante do PIX nesta conversa do WhatsApp!
           </p>
-          <button id="sendOrder" class="whatsapp-btn" type="submit">📲 Enviar pedido pelo WhatsApp</button>
-        <p style="text-align: center; font-size: 0.8rem; color: #666; margin-top: 8px;">
-          📌 Se pagou via PIX, lembre-se de anexar a foto/PDF do comprovante na conversa.
-        </p>
         </div>
 
         <div class="field">
           <label for="notes">Observações</label>
           <textarea id="notes" maxlength="300" rows="3" placeholder="Ex.: sem cebola, ponto da carne..."></textarea>
         </div>
-<!-- Adicione este bloco antes da div .summary -->
+
         <div class="field">
           <label>Itens selecionados</label>
           <div id="cartItemsList" class="cart-items-list"></div>
         </div>
-        
+
         <div class="summary">
           <div><span>Subtotal</span><strong id="subtotal">R$ 0,00</strong></div>
           <div><span>Entrega</span><strong id="deliveryFee">R$ 0,00</strong></div>
@@ -124,6 +120,9 @@
         </div>
 
         <button id="sendOrder" class="whatsapp-btn" type="submit">📲 Enviar pedido pelo WhatsApp</button>
+        <p style="text-align: center; font-size: 0.8rem; color: #666; margin-top: 8px;">
+          📌 Se pagou via PIX, lembre-se de anexar a foto/PDF do comprovante na conversa.
+        </p>
         <p id="formMessage" class="form-message"></p>
       </form>
     </section>
