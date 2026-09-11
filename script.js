@@ -1,6 +1,7 @@
 let db = null;
 let cart = {};
 let storeOpen = true;
+let productsList = [];
 
 const money = value => Number(value || 0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const $ = id => document.getElementById(id);
@@ -8,7 +9,6 @@ const $ = id => document.getElementById(id);
 document.addEventListener("DOMContentLoaded", () => {
   $("year").textContent = new Date().getFullYear();
   $("pixKey").textContent = CONFIG.pixKey;
-  renderMenu();
   bindEvents();
   initFirebase();
   updateSummary();
@@ -18,6 +18,7 @@ function initFirebase(){
   try{
     if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     db = firebase.database();
+    
     db.ref("configuracoes/lojaAberta").on("value", snap => {
       storeOpen = snap.exists() ? snap.val() === true : true;
       updateStoreStatus();
@@ -25,6 +26,20 @@ function initFirebase(){
       storeOpen = true;
       updateStoreStatus("offline");
     });
+
+    db.ref("produtos").on("value", snap => {
+      const data = snap.val();
+      if (data) {
+        productsList = Object.keys(data).map(key => ({
+          id: key,
+          ...data[key]
+        }));
+      } else {
+        productsList = CONFIG.produtos.map(p => ({ ...p, categoria: "Marmitas" }));
+      }
+      renderMenu();
+    });
+
   }catch(error){
     console.error(error);
     updateStoreStatus("offline");
@@ -33,28 +48,56 @@ function initFirebase(){
 
 function renderMenu(){
   const menu = $("menu");
-  const available = CONFIG.produtos.filter(p => p.disponivel);
-  menu.innerHTML = available.map(p => `
-    <article class="product">
-      <img src="${escapeAttr(p.imagem)}" alt="${escapeAttr(p.nome)}" onerror="this.src='https://placehold.co/800x500/f3f3f3/777?text=Marmita'">
-      <div class="product-body">
-        <h3>${escapeHtml(p.nome)}</h3>
-        <p>${escapeHtml(p.descricao)}</p>
-        <div class="product-bottom">
-          <span class="price">${money(p.preco)}</span>
-          <div class="qty">
-            <button type="button" aria-label="Diminuir" onclick="changeQty('${p.id}',-1)">−</button>
-            <span id="qty-${p.id}">0</span>
-            <button type="button" aria-label="Aumentar" onclick="changeQty('${p.id}',1)">+</button>
-          </div>
+  const available = productsList.filter(p => p.disponivel !== false);
+
+  if (!available.length) {
+    menu.innerHTML = "<p style='text-align:center; grid-column: 1/-1;'>Nenhum produto disponível no momento.</p>";
+    return;
+  }
+
+  const categories = {};
+  available.forEach(p => {
+    const cat = p.categoria || "Marmitas";
+    if (!categories[cat]) categories[cat] = [];
+    categories[cat].push(p);
+  });
+
+  let html = "";
+
+  Object.entries(categories).forEach(([categoryName, items]) => {
+    const categoryIcon = categoryName === "Bebidas" ? "🥤" : "🍱";
+    
+    html += `
+      <div class="category-section" style="grid-column: 1 / -1; margin-top: 15px;">
+        <h2 class="category-title">${categoryIcon} ${escapeHtml(categoryName)}</h2>
+        <div class="menu-grid">
+          ${items.map(p => `
+            <article class="product">
+              <img src="${escapeAttr(p.imagem)}" alt="${escapeAttr(p.nome)}" onerror="this.src='https://placehold.co/800x500/f3f3f3/777?text=Sem+Foto'">
+              <div class="product-body">
+                <h3>${escapeHtml(p.nome)}</h3>
+                <p>${escapeHtml(p.descricao)}</p>
+                <div class="product-bottom">
+                  <span class="price">${money(p.preco)}</span>
+                  <div class="qty">
+                    <button type="button" aria-label="Diminuir" onclick="changeQty('${p.id}',-1)">−</button>
+                    <span id="qty-${p.id}">${cart[p.id] || 0}</span>
+                    <button type="button" aria-label="Aumentar" onclick="changeQty('${p.id}',1)">+</button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          `).join("")}
         </div>
       </div>
-    </article>
-  `).join("");
+    `;
+  });
+
+  menu.innerHTML = html;
 }
 
 window.changeQty = function(id, delta){
-  const product = CONFIG.produtos.find(p => p.id === id);
+  const product = productsList.find(p => p.id === id);
   if(!product) return;
   cart[id] = Math.max(0, (cart[id] || 0) + delta);
   if(cart[id] === 0) delete cart[id];
@@ -87,11 +130,12 @@ function updatePayment(){
   $("changeField").classList.toggle("hidden", payment !== "Dinheiro");
   $("pixBox").classList.toggle("hidden", payment !== "PIX");
 }
+
 function updateSummary(){
   let subtotal = 0, count = 0;
   let itemsHtml = "";
 
-  CONFIG.produtos.forEach(p => {
+  productsList.forEach(p => {
     const qty = cart[p.id] || 0;
     if (qty > 0) {
       const itemTotal = qty * p.preco;
@@ -157,26 +201,23 @@ async function submitOrder(event){
     return;
   }
 
-  const items = CONFIG.produtos
+  const items = productsList
     .filter(p => (cart[p.id] || 0) > 0)
     .map(p => ({id:p.id,nome:p.nome,quantidade:cart[p.id],preco:p.preco}));
 
   if(!items.length){
-    message.textContent = "Adicione pelo menos uma marmita.";
+    message.textContent = "Adicione pelo menos um item.";
     return;
   }
 
-  // Leitura segura dos dados do formulário pelo ID correto
   const customerName = document.getElementById("customerName")?.value.trim() || "Cliente";
   let rawCustomerPhone = document.getElementById("telefone")?.value.trim() || "";
   
-  // Limpa caracteres e adiciona '55' automático no telefone do cliente
   let cleanCustomerPhone = rawCustomerPhone.replace(/\D/g, "");
   if (cleanCustomerPhone && !cleanCustomerPhone.startsWith("55") && cleanCustomerPhone.length <= 11) {
     cleanCustomerPhone = "55" + cleanCustomerPhone;
   }
 
-  // Limpa caracteres e adiciona '55' automático no número da loja
   let storePhone = String(CONFIG.whatsappNumber || "").replace(/\D/g, "");
   if (storePhone && !storePhone.startsWith("55")) {
     storePhone = "55" + storePhone;
@@ -257,6 +298,7 @@ async function submitOrder(event){
   updateSummary();
   message.textContent = `Pedido ${pedidoId} registrado! O WhatsApp foi aberto.`;
 }
+
 function buildWhatsAppText(order) {
   const lines = [
     `*🍳 COMIDA NA CHAPA*`,
@@ -277,7 +319,6 @@ function buildWhatsAppText(order) {
     order.trocoPara ? `Troco para: ${money(order.trocoPara)}` : "",
     order.observacoes ? `Observações: ${order.observacoes}` : "",
     ``,
-    // Se for PIX, insere esta linha em destaque no final do texto enviado à loja:
     order.pagamento === "PIX" ? `📌 *IMPORTANTE:* Estou enviando o comprovante do PIX a seguir nesta conversa!` : ""
   ];
 
