@@ -29,14 +29,9 @@
       </div>
       <div class="top-actions">
         <a href="index.html">Ver site</a>
+        <button id="btnPrint" style="background-color: #2196F3; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">🖨️ Imprimir Relatório</button>
+        <button id="btnReset" style="background-color: #ff9800; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">🔄 Zerar Painel</button>
         <button id="logout">Sair</button>
-        <button id="btnPrint" style="background-color: #2196F3; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-  🖨️ Imprimir Relatório
-</button>
-<button id="btnReset" style="background-color: #ff9800; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-  🔄 Zerar Painel
-</button>
-</button>
       </div>
     </header>
 
@@ -70,42 +65,53 @@
         <div class="panel"><div class="panel-title"><h2>Vendas por pagamento</h2></div><div id="payments"></div></div>
         <div class="panel"><div class="panel-title"><h2>Marmitas vendidas</h2></div><div id="products"></div></div>
       </section>
+
+      <!-- SEÇÃO DE CADASTRO E GERENCIAMENTO DE PRODUTOS -->
+      <section class="two-col" style="margin-top: 20px;">
+        <div class="panel">
+          <h2>➕ Cadastrar Novo Produto</h2>
+          <form id="productForm" style="display: grid; gap: 12px; margin-top: 15px;">
+            <div>
+              <label style="font-weight: bold; font-size: 13px;">Nome do Produto *</label>
+              <input type="text" id="prodNome" required placeholder="Ex.: Coca-Cola 2L ou Marmita de Frango" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-top: 4px;">
+            </div>
+
+            <div>
+              <label style="font-weight: bold; font-size: 13px;">Categoria *</label>
+              <select id="prodCategoria" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-top: 4px;">
+                <option value="Marmitas">🍱 Marmitas</option>
+                <option value="Bebidas">🥤 Bebidas</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="font-weight: bold; font-size: 13px;">Descrição *</label>
+              <input type="text" id="prodDesc" required placeholder="Ex.: Gelada 350ml / Acompanha arroz e feijão" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-top: 4px;">
+            </div>
+
+            <div>
+              <label style="font-weight: bold; font-size: 13px;">Preço (R$) *</label>
+              <input type="number" id="prodPreco" step="0.01" min="0" required placeholder="Ex.: 6.00" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-top: 4px;">
+            </div>
+
+            <div>
+              <label style="font-weight: bold; font-size: 13px;">Foto do Produto (Galeria/Dispositivo) *</label>
+              <input type="file" id="prodImgFile" accept="image/*" required style="width: 100%; margin-top: 4px;">
+            </div>
+
+            <button type="submit" style="background: #1b9a59; color: #fff; border: 0; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer;">Salvar Produto</button>
+            <p id="prodMsg" style="font-size: 13px; font-weight: bold; margin: 0;"></p>
+          </form>
+        </div>
+
+        <div class="panel">
+          <h2>📦 Produtos Cadastrados</h2>
+          <div id="adminProductList" style="display: grid; gap: 10px; margin-top: 15px; max-height: 400px; overflow-y: auto;"></div>
+        </div>
+      </section>
     </div>
   </main>
-<section class="card">
-  <h2>➕ Cadastrar Novo Produto</h2>
-  <form id="productForm">
-    <div class="field">
-      <label for="prodNome">Nome do Produto *</label>
-      <input type="text" id="prodNome" required placeholder="Ex.: Coca-Cola 2L ou Marmita de Frango">
-    </div>
 
-    <div class="field">
-      <label for="prodCategoria">Categoria *</label>
-      <select id="prodCategoria" required>
-        <option value="Marmitas">🍱 Marmitas</option>
-        <option value="Bebidas">🥤 Bebidas</option>
-      </select>
-    </div>
-
-    <div class="field">
-      <label for="prodDesc">Descrição *</label>
-      <input type="text" id="prodDesc" required placeholder="Ex.: Gelada 350ml / Acompanha arroz e feijão">
-    </div>
-
-    <div class="field">
-      <label for="prodPreco">Preço (R$) *</label>
-      <input type="number" id="prodPreco" step="0.01" min="0" required placeholder="Ex.: 6.00">
-    </div>
-
-    <div class="field">
-      <label for="prodImgFile">Foto do Produto (Galeria/Dispositivo) *</label>
-      <input type="file" id="prodImgFile" accept="image/*" required>
-    </div>
-
-    <button type="submit" class="whatsapp-btn">Salvar Produto</button>
-  </form>
-</section>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
