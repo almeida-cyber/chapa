@@ -248,10 +248,11 @@ function renderProducts(orders) {
     : "<p>Nenhuma venda hoje.</p>";
 }
 
+// Função com redimensionamento e compressão automática da imagem
 async function handleSaveProduct(event) {
   event.preventDefault();
   const msgEl = $("prodMsg");
-  msgEl.textContent = "Salvando produto...";
+  msgEl.textContent = "Processando imagem e salvando...";
   msgEl.style.color = "#777";
 
   const nome = $("prodNome").value.trim();
@@ -266,35 +267,61 @@ async function handleSaveProduct(event) {
     return;
   }
 
-  const file = fileInput.files[0];
-  const reader = new FileReader();
+  try {
+    // Redimensiona a foto para no máximo 800px e comprime em JPEG (qualidade 70%)
+    const base64Image = await compressImage(fileInput.files[0], 800, 0.7);
 
-  reader.onload = async function(e) {
-    const base64Image = e.target.result;
+    const newRef = db.ref("produtos").push();
+    await newRef.set({
+      nome,
+      categoria,
+      descricao,
+      preco,
+      imagem: base64Image,
+      disponivel: true,
+      criadoEm: Date.now()
+    });
 
-    try {
-      const newRef = db.ref("produtos").push();
-      await newRef.set({
-        nome,
-        categoria,
-        descricao,
-        preco,
-        imagem: base64Image,
-        disponivel: true,
-        criadoEm: Date.now()
-      });
+    msgEl.textContent = "Produto cadastrado com sucesso!";
+    msgEl.style.color = "green";
+    $("productForm").reset();
+  } catch (err) {
+    console.error("Erro ao salvar produto:", err);
+    msgEl.textContent = "Erro ao salvar: " + (err.message || "Verifique o console do navegador");
+    msgEl.style.color = "red";
+  }
+}
 
-      msgEl.textContent = "Produto cadastrado com sucesso!";
-      msgEl.style.color = "green";
-      $("productForm").reset();
-    } catch (err) {
-      console.error(err);
-      msgEl.textContent = "Erro ao salvar produto no Firebase.";
-      msgEl.style.color = "red";
-    }
-  };
+// Função auxiliar para comprimir fotos pesadas do dispositivo
+function compressImage(file, maxWidth = 800, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = event => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
 
-  reader.readAsDataURL(file);
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Converte em Base64 com tamanho otimizado
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = err => reject(err);
+    };
+    reader.onerror = err => reject(err);
+  });
 }
 
 function renderAdminProducts(productsObj) {
