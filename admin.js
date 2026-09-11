@@ -4,6 +4,7 @@ let ordersQuery = null;
 let storeRef = null;
 let connectionRef = null;
 let resetRef = null;
+let productsRef = null;
 let ordersCache = {};
 let shiftStart = 0;
 
@@ -45,12 +46,14 @@ document.addEventListener("DOMContentLoaded", () => {
     $("loginForm").addEventListener("submit", login);
     $("logout").addEventListener("click", () => auth.signOut());
     
-    // Eventos dos botões de ação do Dashboard
-    if ($("btnExport")) $("btnExport").addEventListener("click", exportToCSV);
     if ($("btnPrint")) $("btnPrint").addEventListener("click", printReport);
     if ($("btnReset")) $("btnReset").addEventListener("click", resetDashboard);
-    
     $("storeToggle").addEventListener("click", toggleStore);
+
+    const productForm = $("productForm");
+    if (productForm) {
+      productForm.addEventListener("submit", handleSaveProduct);
+    }
   } catch (error) {
     console.error("Erro ao iniciar Firebase:", error);
     $("loginError").textContent = "Erro ao iniciar Firebase: " + error.message;
@@ -84,7 +87,6 @@ function startDashboard() {
   stopDashboard();
   setConnection("● conectando...", "connecting");
 
-  // Verifica a conexão real do navegador com o Realtime Database.
   connectionRef = db.ref(".info/connected");
   connectionRef.on("value", snapshot => {
     if (snapshot.val() === true) {
@@ -92,106 +94,50 @@ function startDashboard() {
     } else {
       setConnection("● desconectado", "offline");
     }
-  }, error => {
-    console.error("Erro .info/connected:", error);
-    setConnection("● erro de conexão", "error");
   });
 
-  // Escuta a última vez que o painel foi zerado
   resetRef = db.ref("configuracoes/ultimoReset");
   resetRef.on("value", snapshot => {
     shiftStart = snapshot.val() || 0;
     renderDashboard();
-  }, error => {
-    console.error("Erro ao acompanhar ultimoReset:", error);
   });
 
-  // Status da loja em tempo real.
   storeRef = db.ref("configuracoes/lojaAberta");
   storeRef.on("value", snapshot => {
     const open = snapshot.exists() ? snapshot.val() === true : true;
     const button = $("storeToggle");
     button.textContent = open ? "● Aberta" : "● Fechada";
     button.className = open ? "open" : "";
-  }, error => {
-    console.error("Erro ao acompanhar status da loja:", error);
-    alertFirebaseError("status da loja", error);
   });
 
-  // PEDIDOS: listener permanente do Realtime Database.
   ordersQuery = db.ref("pedidos").orderByChild("criadoEm").limitToLast(100);
   ordersQuery.on("value", snapshot => {
     ordersCache = snapshot.val() || {};
-    console.log("Pedidos recebidos em tempo real:", Object.keys(ordersCache).length);
     renderDashboard();
-  }, error => {
-    console.error("Erro ao acompanhar pedidos:", error);
-    setConnection("● erro Firebase", "error");
-    alertFirebaseError("pedidos", error);
+  });
+
+  productsRef = db.ref("produtos");
+  productsRef.on("value", snapshot => {
+    renderAdminProducts(snapshot.val() || {});
   });
 }
 
-function alertFirebaseError(area, error) {
-  const code = error?.code || "";
-  const message = error?.message || "Erro desconhecido.";
-  console.error(`Firebase (${area}):`, code, message);
-
-  const old = $("firebaseError");
-  if (old) old.textContent = `Firebase: ${area} — ${message}`;
-}
-
 function stopDashboard() {
-  if (storeRef) {
-    storeRef.off();
-    storeRef = null;
-  }
-
-  if (ordersQuery) {
-    ordersQuery.off();
-    ordersQuery = null;
-  }
-
-  if (connectionRef) {
-    connectionRef.off();
-    connectionRef = null;
-  }
-
-  if (resetRef) {
-    resetRef.off();
-    resetRef = null;
-  }
-
+  if (storeRef) { storeRef.off(); storeRef = null; }
+  if (ordersQuery) { ordersQuery.off(); ordersQuery = null; }
+  if (connectionRef) { connectionRef.off(); connectionRef = null; }
+  if (resetRef) { resetRef.off(); resetRef = null; }
+  if (productsRef) { productsRef.off(); productsRef = null; }
   ordersCache = {};
 }
 
 async function toggleStore() {
   const current = $("storeToggle").classList.contains("open");
-
   try {
     await db.ref("configuracoes/lojaAberta").set(!current);
   } catch (error) {
     console.error("Erro ao alterar status da loja:", error);
-    alertFirebaseError("alteração do status", error);
   }
-}
-
-function localDateKey(date = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Belem",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).formatToParts(date);
-
-  const get = type => parts.find(part => part.type === type)?.value;
-  return `${get("year")}-${get("month")}-${get("day")}`;
-}
-
-function orderDateKey(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
-  return localDateKey(date);
 }
 
 function renderDashboard() {
@@ -201,12 +147,7 @@ function renderDashboard() {
     return dbValue - da;
   });
 
-  // Filtra apenas os pedidos realizados a partir do último encerramento de expediente (shiftStart)
-  const todayOrders = orders.filter(order => {
-    const orderTime = new Date(order.criadoEm || 0).getTime();
-    return orderTime >= shiftStart;
-  });
-  
+  const todayOrders = orders.filter(order => new Date(order.criadoEm || 0).getTime() >= shiftStart);
   const valid = todayOrders.filter(order => order.status !== "Cancelado");
 
   const meals = valid.reduce((sum, order) => {
@@ -257,10 +198,10 @@ function renderOrders(orders) {
 
      <div class="order-footer" style="display: flex; gap: 8px; align-items: center; justify-content: space-between;">
         <select onchange="updateStatus('${escAttr(order.id)}', this.value)">
-  ${["Novo", "Em preparo", "Pronto para retirada", "Saiu para entrega", "Concluído", "Cancelado"].map(status => `
-    <option ${status === order.status ? "selected" : ""}>${status}</option>
-  `).join("")}
-</select>
+          ${["Novo", "Em preparo", "Pronto para retirada", "Saiu para entrega", "Concluído", "Cancelado"].map(status => `
+            <option ${status === order.status ? "selected" : ""}>${status}</option>
+          `).join("")}
+        </select>
 
         <button onclick="sendWhatsappNotification('${escAttr(order.id)}')" style="background-color: #25D366; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">
           📲 Avisar Cliente
@@ -271,23 +212,16 @@ function renderOrders(orders) {
 }
 
 window.updateStatus = async function(id, status) {
-  if (!auth?.currentUser) {
-    alert("Sua sessão do administrador expirou. Entre novamente.");
-    return;
-  }
-
+  if (!auth?.currentUser) return alert("Sua sessão do administrador expirou.");
   try {
     await db.ref(`pedidos/${id}/status`).set(status);
-    console.log("Status atualizado:", id, status);
   } catch (error) {
     console.error("Erro ao atualizar status:", error);
-    alertFirebaseError("atualização do pedido", error);
   }
 };
 
 function renderPayments(orders) {
   const totals = {};
-
   orders.forEach(order => {
     const payment = order.pagamento || "Não informado";
     totals[payment] = (totals[payment] || 0) + Number(order.total || 0);
@@ -302,7 +236,6 @@ function renderPayments(orders) {
 
 function renderProducts(orders) {
   const totals = {};
-
   orders.forEach(order => (order.itens || []).forEach(item => {
     const name = item.nome || "Produto";
     totals[name] = (totals[name] || 0) + Number(item.quantidade || 0);
@@ -315,16 +248,97 @@ function renderProducts(orders) {
     : "<p>Nenhuma venda hoje.</p>";
 }
 
+async function handleSaveProduct(event) {
+  event.preventDefault();
+  const msgEl = $("prodMsg");
+  msgEl.textContent = "Salvando produto...";
+  msgEl.style.color = "#777";
+
+  const nome = $("prodNome").value.trim();
+  const categoria = $("prodCategoria").value;
+  const descricao = $("prodDesc").value.trim();
+  const preco = Number($("prodPreco").value);
+  const fileInput = $("prodImgFile");
+
+  if (!fileInput.files || !fileInput.files[0]) {
+    msgEl.textContent = "Selecione uma imagem para o produto.";
+    msgEl.style.color = "red";
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+
+  reader.onload = async function(e) {
+    const base64Image = e.target.result;
+
+    try {
+      const newRef = db.ref("produtos").push();
+      await newRef.set({
+        nome,
+        categoria,
+        descricao,
+        preco,
+        imagem: base64Image,
+        disponivel: true,
+        criadoEm: Date.now()
+      });
+
+      msgEl.textContent = "Produto cadastrado com sucesso!";
+      msgEl.style.color = "green";
+      $("productForm").reset();
+    } catch (err) {
+      console.error(err);
+      msgEl.textContent = "Erro ao salvar produto no Firebase.";
+      msgEl.style.color = "red";
+    }
+  };
+
+  reader.readAsDataURL(file);
+}
+
+function renderAdminProducts(productsObj) {
+  const container = $("adminProductList");
+  if (!container) return;
+
+  const keys = Object.keys(productsObj);
+  if (!keys.length) {
+    container.innerHTML = "<p style='color:#777; font-size:13px;'>Nenhum produto cadastrado no banco.</p>";
+    return;
+  }
+
+  container.innerHTML = keys.map(key => {
+    const prod = productsObj[key];
+    return `
+      <div style="display: flex; align-items: center; justify-content: space-between; border: 1px solid #eee; padding: 8px 12px; border-radius: 8px; background: #fafafa;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="${prod.imagem}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px;" onerror="this.src='https://placehold.co/100?text=Foto'">
+          <div>
+            <strong style="font-size: 13px; display: block;">${esc(prod.nome)}</strong>
+            <span style="font-size: 11px; color: #777;">${esc(prod.categoria)} • ${money(prod.preco)}</span>
+          </div>
+        </div>
+        <button onclick="deleteProduct('${key}')" style="background: #d92323; color: white; border: 0; padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;">Excluir</button>
+      </div>
+    `;
+  }).join("");
+}
+
+window.deleteProduct = async function(key) {
+  if (confirm("Tem certeza que deseja remover este produto?")) {
+    try {
+      await db.ref(`produtos/${key}`).remove();
+    } catch (err) {
+      alert("Erro ao excluir produto: " + err.message);
+    }
+  }
+};
+
 function formatDate(value) {
   try {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return String(value || "");
-
-    return date.toLocaleString("pt-BR", {
-      dateStyle: "short",
-      timeStyle: "short",
-      timeZone: "America/Belem"
-    });
+    return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Belem" });
   } catch {
     return String(value || "");
   }
@@ -332,11 +346,7 @@ function formatDate(value) {
 
 function esc(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
   })[char]);
 }
 
@@ -344,212 +354,52 @@ function escAttr(value) {
   return esc(value).replace(/'/g, "&#039;");
 }
 
-function exportToCSV() {
-  const orders = Object.values(ordersCache);
-  if (!orders.length) return alert("Nenhum pedido para exportar.");
-
-  let csv = "Data,ID,Cliente,Pagamento,Entrega,Status,Total\n";
-
-  orders.forEach(order => {
-    const data = formatDate(order.criadoEm);
-    const id = order.id || "";
-    const cliente = order.cliente?.nome || "";
-    const pagamento = order.pagamento || "";
-    const entrega = order.cliente?.recebimento || "";
-    const status = order.status || "";
-    const total = order.total || 0;
-
-    csv += `"${data}","${id}","${cliente}","${pagamento}","${entrega}","${status}","${total}"\n`;
-  });
-
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.setAttribute("href", url);
-  link.setAttribute("download", `relatorio_vendas.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
 async function resetDashboard() {
-  if (!auth?.currentUser) {
-    alert("Sua sessão do administrador expirou.");
-    return;
-  }
-
-  if (confirm("Deseja encerrar o expediente e zerar o painel para o próximo dia?\n\nTodo o histórico continuará salvo no Firebase.")) {
+  if (!auth?.currentUser) return alert("Sessão expirada.");
+  if (confirm("Deseja encerrar o expediente e zerar o painel para o próximo dia?")) {
     try {
       await db.ref("configuracoes/ultimoReset").set(Date.now());
-      console.log("Expediente zerado!");
     } catch (error) {
-      console.error("Erro ao zerar expediente:", error);
-      alertFirebaseError("zerar expediente", error);
+      console.error(error);
     }
   }
 }
 
 function printReport() {
-  const orders = Object.values(ordersCache).sort((a, b) => {
-    const da = new Date(a?.criadoEm || 0).getTime();
-    const dbValue = new Date(b?.criadoEm || 0).getTime();
-    return dbValue - da;
-  });
+  const orders = Object.values(ordersCache).sort((a, b) => new Date(b?.criadoEm || 0) - new Date(a?.criadoEm || 0));
+  const valid = orders.filter(o => new Date(o.criadoEm || 0).getTime() >= shiftStart && o.status !== "Cancelado");
 
-  const currentOrders = orders.filter(order => new Date(order.criadoEm || 0).getTime() >= shiftStart);
-  const valid = currentOrders.filter(order => order.status !== "Cancelado");
-
-  if (!valid.length) {
-    alert("Nenhum pedido válido encontrado neste expediente para imprimir.");
-    return;
-  }
+  if (!valid.length) return alert("Nenhum pedido válido encontrado para imprimir.");
 
   const meals = valid.reduce((sum, order) => sum + (order.itens || []).reduce((t, i) => t + Number(i.quantidade || 0), 0), 0);
   const sales = valid.reduce((sum, order) => sum + Number(order.total || 0), 0);
-  const ticket = valid.length ? sales / valid.length : 0;
-
-  const paymentsObj = {};
-  valid.forEach(order => {
-    const p = order.pagamento || "Não informado";
-    paymentsObj[p] = (paymentsObj[p] || 0) + Number(order.total || 0);
-  });
-
-  const productsObj = {};
-  valid.forEach(order => (order.itens || []).forEach(item => {
-    const name = item.nome || "Produto";
-    productsObj[name] = (productsObj[name] || 0) + Number(item.quantidade || 0);
-  }));
 
   const html = `
     <!DOCTYPE html>
-    <html lang="pt-BR">
-      <head>
-        <meta charset="UTF-8">
-        <title>Relatório do Expediente - Comida na Chapa</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; color: #333; line-height: 1.4; }
-          h1 { text-align: center; margin-bottom: 5px; font-size: 22px; }
-          .subtitle { text-align: center; color: #666; font-size: 13px; margin-bottom: 20px; }
-          .metrics-grid { display: flex; justify-content: space-between; margin-bottom: 20px; gap: 10px; }
-          .metric-card { flex: 1; border: 1px solid #ccc; padding: 10px; text-align: center; border-radius: 6px; background: #fafafa; }
-          .metric-card span { font-size: 11px; color: #666; text-transform: uppercase; display: block; }
-          .metric-card strong { font-size: 18px; color: #000; display: block; margin-top: 4px; }
-          .section-title { font-size: 15px; font-weight: bold; margin-top: 20px; margin-bottom: 8px; border-bottom: 2px solid #2196F3; padding-bottom: 4px; }
-          .columns { display: flex; gap: 20px; margin-bottom: 15px; }
-          .column { flex: 1; }
-          table { width: 100%; border-collapse: collapse; font-size: 12px; }
-          th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
-          th { background-color: #f2f2f2; font-weight: bold; }
-          tr:nth-child(even) { background-color: #f9f9f9; }
-        </style>
-      </head>
-      <body>
-        <h1>Comida na Chapa — Relatório do Expediente</h1>
-        <div class="subtitle">Gerado em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Belem" })}</div>
-
-        <div class="metrics-grid">
-          <div class="metric-card"><span>Pedidos Concluídos</span><strong>${valid.length}</strong></div>
-          <div class="metric-card"><span>Marmitas Vendidas</span><strong>${meals}</strong></div>
-          <div class="metric-card"><span>Faturamento Total</span><strong>${money(sales)}</strong></div>
-          <div class="metric-card"><span>Ticket Médio</span><strong>${money(ticket)}</strong></div>
-        </div>
-
-        <div class="columns">
-          <div class="column">
-            <div class="section-title">Vendas por Pagamento</div>
-            <table>
-              <thead><tr><th>Forma</th><th>Total</th></tr></thead>
-              <tbody>
-                ${Object.entries(paymentsObj).map(([k, v]) => `<tr><td>${esc(k)}</td><td><strong>${money(v)}</strong></td></tr>`).join("")}
-              </tbody>
-            </table>
-          </div>
-          <div class="column">
-            <div class="section-title">Produtos Vendidos</div>
-            <table>
-              <thead><tr><th>Item</th><th>Qtd.</th></tr></thead>
-              <tbody>
-                ${Object.entries(productsObj).map(([k, v]) => `<tr><td>${esc(k)}</td><td><strong>${v} un.</strong></td></tr>`).join("")}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="section-title">Detalhamento dos Pedidos</div>
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Data/Hora</th>
-              <th>Cliente</th>
-              <th>Recebimento</th>
-              <th>Pagamento</th>
-              <th>Status</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${valid.map(o => `
-              <tr>
-                <td>${esc(o.id)}</td>
-                <td>${formatDate(o.criadoEm)}</td>
-                <td>${esc(o.cliente?.nome || "")}</td>
-                <td>${esc(o.cliente?.recebimento || "")}</td>
-                <td>${esc(o.pagamento || "")}</td>
-                <td>${esc(o.status || "")}</td>
-                <td><strong>${money(o.total)}</strong></td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
-
-        <script>
-          window.onload = function() { window.print(); }
-        </script>
+    <html>
+      <head><title>Relatório do Expediente</title></head>
+      <body style="font-family: sans-serif; padding:20px;">
+        <h2>Comida na Chapa — Relatório</h2>
+        <p>Vendas Totais: ${money(sales)} | Marmitas: ${meals}</p>
       </body>
     </html>
   `;
-
-  const printWin = window.open('', '_blank');
-  if (!printWin) return alert("Por favor, permita pop-ups no navegador para visualizar o relatório.");
-  printWin.document.write(html);
-  printWin.document.close();
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
 }
+
 window.sendWhatsappNotification = function(id) {
   const order = ordersCache[id];
-  if (!order) return alert("Pedido não encontrado.");
-
+  if (!order) return;
   let phone = (order.cliente?.telefone || "").replace(/\D/g, "");
-  
-  if (!phone) {
-    const input = prompt(`Telefone não encontrado para ${order.cliente?.nome || "o cliente"}.\nDigite o WhatsApp com DDD:`);
-    if (!input) return;
-    phone = input.replace(/\D/g, "");
-  }
-
-  // Garante o DDD 55 do Brasil
-  if (phone && !phone.startsWith("55") && phone.length <= 11) {
-    phone = "55" + phone;
-  }
+  if (phone && !phone.startsWith("55") && phone.length <= 11) phone = "55" + phone;
 
   let text = "";
+  if (order.status === "Em preparo") text = `Olá *${order.cliente?.nome}*! Seu pedido *${order.id}* está em preparo!`;
+  else if (order.status === "Saiu para entrega") text = `Olá *${order.cliente?.nome}*! Seu pedido *${order.id}* saiu para entrega!`;
+  else if (order.status === "Pronto para retirada") text = `Olá *${order.cliente?.nome}*! Seu pedido *${order.id}* está pronto!`;
+  else return alert("Disponível apenas para os status em andamento.");
 
-  // Filtro estrito: só aceita estes 3 status
-  switch (order.status) {
-    case "Em preparo":
-      text = `Olá *${order.cliente?.nome || "Cliente"}*! 👨‍🍳 Seu pedido *${order.id}* está sendo preparado!`;
-      break;
-    case "Saiu para entrega":
-      text = `Olá *${order.cliente?.nome || "Cliente"}*! 🛵💨 Seu pedido *${order.id}* já está sendo entregue!`;
-      break;
-    case "Pronto para retirada":
-      text = `Olá *${order.cliente?.nome || "Cliente"}*! 🏪 Seu pedido *${order.id}* está pronto para a retirada!`;
-      break;
-    default:
-      // Impede o envio para 'Novo', 'Concluído' ou 'Cancelado'
-      return alert("Notificações via WhatsApp estão disponíveis apenas para: Em preparo, Saiu para entrega e Pronto para retirada.");
-  }
-
-  const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-  window.open(url, "_blank");
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, "_blank");
 };
