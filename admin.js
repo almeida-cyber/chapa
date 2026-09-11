@@ -248,7 +248,7 @@ function renderProducts(orders) {
     : "<p>Nenhuma venda hoje.</p>";
 }
 
-// Função com redimensionamento e compressão automática da imagem
+// SALVAR PRODUTO COM COMPRESSÃO AUTOMÁTICA DE IMAGEM
 async function handleSaveProduct(event) {
   event.preventDefault();
   const msgEl = $("prodMsg");
@@ -268,7 +268,6 @@ async function handleSaveProduct(event) {
   }
 
   try {
-    // Redimensiona a foto para no máximo 800px e comprime em JPEG (qualidade 70%)
     const base64Image = await compressImage(fileInput.files[0], 800, 0.7);
 
     const newRef = db.ref("produtos").push();
@@ -292,7 +291,7 @@ async function handleSaveProduct(event) {
   }
 }
 
-// Função auxiliar para comprimir fotos pesadas do dispositivo
+// COMPRESSÃO DE FOTOS
 function compressImage(file, maxWidth = 800, quality = 0.7) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -315,7 +314,6 @@ function compressImage(file, maxWidth = 800, quality = 0.7) {
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Converte em Base64 com tamanho otimizado
         resolve(canvas.toDataURL("image/jpeg", quality));
       };
       img.onerror = err => reject(err);
@@ -324,6 +322,7 @@ function compressImage(file, maxWidth = 800, quality = 0.7) {
   });
 }
 
+// LISTA DE PRODUTOS COM DISPONÍVEL / ESGOTADO E EXCLUIR
 function renderAdminProducts(productsObj) {
   const container = $("adminProductList");
   if (!container) return;
@@ -349,7 +348,6 @@ function renderAdminProducts(productsObj) {
         </div>
 
         <div style="display: flex; gap: 6px; align-items: center;">
-          <!-- BOTÃO DE ALTERNAR STATUS (DISPONÍVEL / ESGOTADO) -->
           <button onclick="toggleAvailability('${key}', ${isAvailable})" style="background: ${isAvailable ? '#1b9a59' : '#d92323'}; color: white; border: 0; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">
             ${isAvailable ? '🟢 Disponível' : '🔴 Esgotado'}
           </button>
@@ -363,13 +361,31 @@ function renderAdminProducts(productsObj) {
   }).join("");
 }
 
-// Alterna o status do produto entre disponível e esgotado no Firebase
+// MARCAR COMO ESGOTADO OU DISPONÍVEL
 window.toggleAvailability = async function(key, currentStatus) {
-  if (!auth?.currentUser) return alert("Sessão expirada.");
+  if (!auth?.currentUser) return alert("Sessão expirada. Faça login novamente.");
   try {
     await db.ref(`produtos/${key}/disponivel`).set(!currentStatus);
   } catch (err) {
     alert("Erro ao alterar disponibilidade: " + err.message);
+  }
+};
+
+// EXCLUIR PRODUTO
+window.deleteProduct = async function(key) {
+  if (!auth || !auth.currentUser) {
+    alert("Sua sessão expirou. Faça login novamente no painel.");
+    return;
+  }
+
+  if (confirm("Tem certeza que deseja excluir este produto do cardápio?")) {
+    try {
+      await db.ref("produtos").child(key).remove();
+      alert("Produto removido com sucesso!");
+    } catch (err) {
+      console.error("Erro ao excluir produto:", err);
+      alert("Erro ao excluir: " + (err.message || "Permissão negada no Firebase."));
+    }
   }
 };
 
