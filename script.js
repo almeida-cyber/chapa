@@ -87,14 +87,30 @@ function updatePayment(){
   $("changeField").classList.toggle("hidden", payment !== "Dinheiro");
   $("pixBox").classList.toggle("hidden", payment !== "PIX");
 }
-
 function updateSummary(){
   let subtotal = 0, count = 0;
+  let itemsHtml = "";
+
   CONFIG.produtos.forEach(p => {
     const qty = cart[p.id] || 0;
-    subtotal += qty * p.preco;
-    count += qty;
+    if (qty > 0) {
+      const itemTotal = qty * p.preco;
+      subtotal += itemTotal;
+      count += qty;
+      itemsHtml += `
+        <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #eee; font-size: 0.9rem;">
+          <span>${qty}x ${escapeHtml(p.nome)}</span>
+          <strong>${money(itemTotal)}</strong>
+        </div>
+      `;
+    }
   });
+
+  const cartListEl = $("cartItemsList");
+  if (cartListEl) {
+    cartListEl.innerHTML = itemsHtml || "<p style='color: #888; font-size: 0.85rem; margin: 0;'>Nenhum item selecionado</p>";
+  }
+
   const delivery = document.querySelector('input[name="deliveryType"]:checked')?.value === "delivery";
   const fee = delivery ? Number(CONFIG.taxas[$("neighborhood").value] || 0) : 0;
   $("subtotal").textContent = money(subtotal);
