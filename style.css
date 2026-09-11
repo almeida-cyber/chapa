@@ -27,3 +27,30 @@ button{cursor:pointer}
   border-bottom: 2px solid var(--border);
   color: var(--ink);
 }
+/* Selo de ESGOTADO vermelho no painel do cliente */
+.badge-esgotado {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: #e53935; /* Vermelho vivo */
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(229, 57, 53, 0.5);
+  text-transform: uppercase;
+  z-index: 2;
+}
+
+/* Card do produto esgotado com borda sutil em tom vermelho */
+.product.out-of-stock {
+  opacity: 0.75;
+  border: 1px solid #ffebee;
+}
+
+.product.out-of-stock button {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
