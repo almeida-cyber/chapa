@@ -3,147 +3,121 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Comida na Chapa — cardápio digital e pedidos online.">
-  <meta name="theme-color" content="#d92323">
-  <title>Comida na Chapa | Cardápio Digital</title>
+  <title>Comida na Chapa - Cardápio Digital</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark">🍳</div>
-      <div>
-        <h1>Comida na Chapa</h1>
-        <p>Quentinha, saborosa e feita na hora</p>
-      </div>
+
+  <!-- Cabeçalho -->
+  <header style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #fff; border-bottom: 1px solid #eee;">
+    <div>
+      <h1 style="margin: 0; font-size: 20px;">Comida na Chapa</h1>
+      <p style="margin: 0; color: #777; font-size: 13px;">Quentinha, saborosa e feita na hora</p>
     </div>
-    <span id="storeBadge" class="...">• Verificando...</span>
+    <span id="storeBadge" style="padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; background: #eee; color: #555;">
+      ● Carregando...
+    </span>
   </header>
 
-  <main class="container">
-    <section class="hero">
-      <div>
-        <span class="eyebrow">CARDÁPIO DIGITAL</span>
-        <h2>Escolha sua marmita ou bebida</h2>
-        <p>Monte seu pedido e envie diretamente pelo WhatsApp.</p>
+  <!-- Banner de Loja Fechada -->
+  <div id="storeStatusBanner" style="display: none; background: #fce8e6; color: #c5221f; text-align: center; padding: 12px; font-weight: bold; font-size: 14px;">
+    🔴 Estamos fechados no momento. Não estamos aceitando novos pedidos.
+  </div>
+
+  <!-- Banner de Destaque -->
+  <main style="max-width: 900px; margin: 20px auto; padding: 0 15px;">
+    <div style="background: #e52e2e; color: white; padding: 25px; border-radius: 16px; margin-bottom: 20px;">
+      <small style="text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Cardápio Digital</small>
+      <h2 style="margin: 10px 0; font-size: 28px;">Escolha sua marmita ou bebida</h2>
+      <p style="margin: 0; opacity: 0.9;">Monte seu pedido e envie diretamente pelo WhatsApp.</p>
+    </div>
+
+    <!-- O Cardápio será renderizado aqui -->
+    <div id="menu"></div>
+  </main>
+
+  <!-- Botão Flutuante do Carrinho -->
+  <div id="floatingCart" style="position: fixed; bottom: 20px; right: 20px; display: none;">
+    <button id="openCartBtn" style="background: #1b9a59; color: white; border: none; padding: 14px 24px; border-radius: 50px; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+      🛒 Ver Carrinho (<span id="cartTotalQty">0</span>) - <span id="cartTotalPrice">R$ 0,00</span>
+    </button>
+  </div>
+
+  <!-- Modal do Carrinho e Finalização do Pedido -->
+  <div id="cartModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; width: 90%; max-width: 450px; padding: 20px; border-radius: 12px; max-height: 90vh; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+        <h3 style="margin: 0;">Seu Pedido</h3>
+        <button id="closeCartBtn" style="background: none; border: none; font-size: 20px; cursor: pointer;">✕</button>
       </div>
-      <div class="hero-badge">🔥 Feita na chapa</div>
-    </section>
 
-    <section>
-      <div id="menu" class="menu-grid"></div>
-    </section>
+      <!-- Itens Adicionados -->
+      <div id="cartItemsList" style="margin: 15px 0;"></div>
 
-    <section class="checkout card">
-      <div class="section-title">
-        <span>🛒</span>
-        <div>
-          <h2>Finalizar pedido</h2>
-          <p>Preencha seus dados para enviar o pedido.</p>
-        </div>
+      <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; margin-bottom: 20px;">
+        <span>Total:</span>
+        <span id="modalTotal">R$ 0,00</span>
       </div>
 
-      <form id="orderForm">
-        <div class="field">
-          <label for="customerName">Seu nome *</label>
-          <input id="customerName" name="customerName" type="text" maxlength="80" required placeholder="Digite seu nome">
+      <!-- Formulário de Envio do Cliente -->
+      <form id="checkoutForm">
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px;">Seu Nome *</label>
+          <input type="text" id="custName" required placeholder="Digite seu nome" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
         </div>
 
-        <div class="field">
-          <label for="telefone">Seu WhatsApp *</label>
-          <input type="tel" id="telefone" name="telefone" maxlength="15" placeholder="Ex.: 96 98123-4567" required>
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px;">Seu Telefone / WhatsApp *</label>
+          <input type="tel" id="custPhone" required placeholder="(96) 99999-9999" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
         </div>
 
-        <div class="field">
-          <label>Forma de recebimento *</label>
-          <div class="segmented">
-            <label><input type="radio" name="deliveryType" value="delivery" checked> <span>🚗 Entrega</span></label>
-            <label><input type="radio" name="deliveryType" value="pickup"> <span>🏪 Retirada</span></label>
-          </div>
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px;">Forma de Recebimento</label>
+          <select id="custRecebimento" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
+            <option value="Entrega">Entrega em Domicílio</option>
+            <option value="Retirada">Retirar no Balcão</option>
+          </select>
         </div>
 
-        <div id="deliveryFields">
-          <div class="field">
-            <label for="neighborhood">Bairro *</label>
-            <select id="neighborhood" name="neighborhood">
-              <option value="">Selecione</option>
-              <option value="Água Fria">Água Fria — R$ 3,00</option>
-              <option value="Pedra Branca">Pedra Branca — R$ 8,00</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="address">Endereço *</label>
-            <input id="address" name="address" type="text" maxlength="160" placeholder="Rua, número, complemento">
-          </div>
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px;">Bairro / Endereço</label>
+          <input type="text" id="custBairro" placeholder="Rua, número e bairro" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
         </div>
 
-        <div class="field">
-          <label for="payment">Pagamento *</label>
-          <select id="payment" name="payment" required>
-            <option value="">Selecione</option>
-            <option value="PIX">PIX</option>
-            <option value="Cartão">Cartão</option>
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px;">Forma de Pagamento</label>
+          <select id="custPagamento" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
+            <option value="Pix">Pix</option>
+            <option value="Cartão de Débito/Crédito">Cartão de Débito/Crédito</option>
             <option value="Dinheiro">Dinheiro</option>
           </select>
         </div>
 
-        <div id="changeField" class="field hidden">
-          <label for="changeFor">Troco para quanto?</label>
-          <input id="changeFor" type="number" min="0" step="0.01" placeholder="Ex.: 50,00">
-        </div>
-
-        <div id="pixBox" class="pix-box hidden">
-          <strong>Chave PIX</strong>
-          <div style="display: flex; gap: 8px; align-items: center; margin: 6px 0;">
-            <span id="pixKey">96984352841</span>
-            <button id="copyPix" type="button" class="small-btn">Copiar Chave</button>
-          </div>
-          <p style="color: #d92323; font-weight: bold; font-size: 0.85rem; margin-top: 6px;">
-            ⚠️ ATENÇÃO: Após enviar o pedido, anexe o comprovante do PIX nesta conversa do WhatsApp!
-          </p>
-        </div>
-
-        <div class="field">
-          <label for="notes">Observações</label>
-          <textarea id="notes" maxlength="300" rows="3" placeholder="Ex.: sem cebola, ponto da carne..."></textarea>
-        </div>
-
-        <div class="field">
-          <label>Itens selecionados</label>
-          <div id="cartItemsList" class="cart-items-list"></div>
-        </div>
-
-        <div class="summary">
-          <div><span>Subtotal</span><strong id="subtotal">R$ 0,00</strong></div>
-          <div><span>Entrega</span><strong id="deliveryFee">R$ 0,00</strong></div>
-          <div class="total"><span>Total</span><strong id="total">R$ 0,00</strong></div>
-        </div>
-
-        <button id="sendOrder" class="whatsapp-btn" type="submit">📲 Enviar pedido pelo WhatsApp</button>
-        <p style="text-align: center; font-size: 0.8rem; color: #666; margin-top: 8px;">
-          📌 Se pagou via PIX, lembre-se de anexar a foto/PDF do comprovante na conversa.
-        </p>
-        <p id="formMessage" class="form-message"></p>
+        <button type="submit" style="width: 100%; background: #1b9a59; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;">
+          Enviar Pedido pelo WhatsApp
+        </button>
       </form>
-    </section>
-  </main>
-
-  <div id="cartBar" class="cart-bar hidden">
-    <div>
-      <strong id="cartCount">0 itens</strong>
-      <span id="cartTotal">R$ 0,00</span>
     </div>
-    <button id="goCheckout">Finalizar</button>
   </div>
 
-  <footer>
-    <strong>Comida na Chapa</strong>
-    <span>Pedido online • © <span id="year"></span></span>
-  </footer>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  
+  <!-- Configurações do seu Firebase -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "SUA_API_KEY",
+      authDomain: "SEU_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://SEU_PROJECT_ID-default-rtdb.firebaseio.com",
+      projectId: "SEU_PROJECT_ID",
+      storageBucket: "SEU_PROJECT_ID.appspot.com",
+      messagingSenderId: "SEU_SENDER_ID",
+      appId: "SEU_APP_ID"
+    };
+  </script>
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <script src="firebase-config.js"></script>
-  <script src="script.js?v=3"></script>
+  <!-- Lógica Principal -->
+  <script src="script.js?v=4"></script>
 </body>
 </html>
