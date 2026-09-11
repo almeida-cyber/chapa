@@ -48,15 +48,14 @@ function initFirebase(){
 
 function renderMenu(){
   const menu = $("menu");
-  const available = productsList.filter(p => p.disponivel !== false);
 
-  if (!available.length) {
-    menu.innerHTML = "<p style='text-align:center; grid-column: 1/-1;'>Nenhum produto disponível no momento.</p>";
+  if (!productsList.length) {
+    menu.innerHTML = "<p style='text-align:center; grid-column: 1/-1;'>Nenhum produto cadastrado no momento.</p>";
     return;
   }
 
   const categories = {};
-  available.forEach(p => {
+  productsList.forEach(p => {
     const cat = p.categoria || "Marmitas";
     if (!categories[cat]) categories[cat] = [];
     categories[cat].push(p);
@@ -71,23 +70,31 @@ function renderMenu(){
       <div class="category-section" style="grid-column: 1 / -1; margin-top: 15px;">
         <h2 class="category-title">${categoryIcon} ${escapeHtml(categoryName)}</h2>
         <div class="menu-grid">
-          ${items.map(p => `
-            <article class="product">
-              <img src="${escapeAttr(p.imagem)}" alt="${escapeAttr(p.nome)}" onerror="this.src='https://placehold.co/800x500/f3f3f3/777?text=Sem+Foto'">
+          ${items.map(p => {
+            const isAvailable = p.disponivel !== false;
+            const qty = cart[p.id] || 0;
+
+            return `
+            <article class="product ${!isAvailable ? 'out-of-stock' : ''}">
+              <div style="position: relative;">
+                <img src="${escapeAttr(p.imagem)}" alt="${escapeAttr(p.nome)}" onerror="this.src='https://placehold.co/800x500/f3f3f3/777?text=Sem+Foto'">
+                ${!isAvailable ? '<span class="badge-esgotado">ESGOTADO</span>' : ''}
+              </div>
               <div class="product-body">
                 <h3>${escapeHtml(p.nome)}</h3>
                 <p>${escapeHtml(p.descricao)}</p>
                 <div class="product-bottom">
                   <span class="price">${money(p.preco)}</span>
                   <div class="qty">
-                    <button type="button" aria-label="Diminuir" onclick="changeQty('${p.id}',-1)">−</button>
-                    <span id="qty-${p.id}">${cart[p.id] || 0}</span>
-                    <button type="button" aria-label="Aumentar" onclick="changeQty('${p.id}',1)">+</button>
+                    <button type="button" aria-label="Diminuir" onclick="changeQty('${p.id}',-1)" ${!isAvailable ? 'disabled' : ''}>−</button>
+                    <span id="qty-${p.id}">${qty}</span>
+                    <button type="button" aria-label="Aumentar" onclick="changeQty('${p.id}',1)" ${!isAvailable ? 'disabled' : ''}>+</button>
                   </div>
                 </div>
               </div>
             </article>
-          `).join("")}
+          `;
+          }).join("")}
         </div>
       </div>
     `;
