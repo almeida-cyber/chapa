@@ -135,11 +135,17 @@ function stopDashboard() {
 
 async function toggleStore() {
   const button = $("storeToggle");
-  const current = button ? button.classList.contains("open") : false;
+  if (!button) return;
+
+  const isCurrentlyOpen = button.classList.contains("open");
+  button.textContent = "● Alterando...";
+
   try {
-    await db.ref("configuracoes/lojaAberta").set(!current);
+    await db.ref("configuracoes/lojaAberta").set(!isCurrentlyOpen);
   } catch (error) {
-    console.error("Erro ao alterar status da loja:", error);
+    console.error("Erro ao alterar status:", error);
+    alert("Não foi possível alterar o status da loja: " + error.message);
+    button.textContent = isCurrentlyOpen ? "● Aberta" : "● Fechada";
   }
 }
 
