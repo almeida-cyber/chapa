@@ -1,3 +1,6 @@
+// ⚠️ ATENÇÃO: COLOQUE SEU NÚMERO DO WHATSAPP AQUI (Com 55 + DDD + Número)
+const ADMIN_WHATSAPP = "559694352841"; 
+
 let db = null;
 let productsList = [];
 let cart = {};
@@ -27,52 +30,57 @@ function initFirebase() {
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     db = firebase.database();
 
-    // Escuta o status de funcionamento da loja
+    // Sincroniza o status da loja (Aberta / Fechada)
     db.ref("configuracoes/lojaAberta").on("value", snap => {
       storeOpen = snap.exists() ? snap.val() === true : true;
       updateStoreStatus();
+      renderMenu(); // Re-renderiza para ativar/desativar botões
     }, () => {
       storeOpen = true;
       updateStoreStatus();
     });
 
-    // Carrega APENAS os produtos cadastrados dinamicamente no Firebase
+    // Carrega produtos dinamicamente do Firebase
     db.ref("produtos").on("value", snap => {
       const data = snap.val() || {};
       
       productsList = Object.keys(data).map(key => ({
         id: key,
-        ...data[key]
+        ...data[key],
+        preco: Number(data[key].preco || 0) // Garante que o preço é numérico
       }));
 
       renderMenu();
     }, error => {
-      console.error("Erro de leitura do Firebase:", error);
+      console.error("Erro ao ler produtos do Firebase:", error);
       productsList = [];
       renderMenu();
     });
 
   } catch (err) {
-    console.error("Erro ao inicializar Firebase no cliente:", err);
-    productsList = [];
-    renderMenu();
+    console.error("Erro ao inicializar Firebase:", err);
   }
 }
 
 function updateStoreStatus() {
-  // Procura pelo elemento do topo ou pelo banner
-  const badge = $("storeBadge") || $("storeStatus") || document.querySelector("[class*='Verificando']");
-  
+  const badge = $("storeBadge") || $("storeStatus");
+  const banner = $("storeStatusBanner");
+
   if (badge) {
     if (storeOpen) {
       badge.textContent = "🟢 Loja Aberta";
-      badge.style.backgroundColor = "#e6f4ea";
+      badge.style.background = "#e6f4ea";
       badge.style.color = "#137333";
     } else {
       badge.textContent = "🔴 Loja Fechada";
-      badge.style.backgroundColor = "#fce8e6";
+      badge.style.background = "#fce8e6";
       badge.style.color = "#c5221f";
     }
+  }
+
+  if (banner) {
+    banner.style.display = storeOpen ? "none" : "block";
+    banner.textContent = "🔴 Estamos fechados no momento. Não estamos aceitando novos pedidos.";
   }
 }
 
@@ -81,7 +89,7 @@ function renderMenu() {
   if (!menu) return;
 
   if (!productsList.length) {
-    menu.innerHTML = "<p style='text-align:center; grid-column: 1/-1;'>Nenhum produto cadastrado no momento.</p>";
+    menu.innerHTML = "<p style='text-align:center; grid-column: 1/-1;'>Nenhum produto disponível no momento.</p>";
     return;
   }
 
@@ -102,14 +110,14 @@ function renderMenu() {
         <h2 class="category-title">${categoryIcon} ${escapeHtml(categoryName)}</h2>
         <div class="menu-grid">
           ${items.map(p => {
-            const isAvailable = p.disponivel !== false;
+            const isAvailable = storeOpen && (p.disponivel !== false);
             const qty = cart[p.id] || 0;
 
             return `
             <article class="product ${!isAvailable ? 'out-of-stock' : ''}">
               <div style="position: relative;">
                 <img src="${escapeAttr(p.imagem)}" alt="${escapeAttr(p.nome)}" onerror="this.src='https://placehold.co/800x500/f3f3f3/777?text=Sem+Foto'">
-                ${!isAvailable ? '<span class="badge-esgotado">ESGOTADO</span>' : ''}
+                ${!storeOpen ? '<span class="badge-esgotado">LOJA FECHADA</span>' : (!p.disponivel ? '<span class="badge-esgotado">ESGOTADO</span>' : '')}
               </div>
               <div class="product-body">
                 <h3>${escapeHtml(p.nome)}</h3>
@@ -117,9 +125,9 @@ function renderMenu() {
                 <div class="product-bottom">
                   <span class="price">${money(p.preco)}</span>
                   <div class="qty">
-                    <button type="button" aria-label="Diminuir" onclick="changeQty('${escapeAttr(p.id)}', -1)" ${!isAvailable ? 'disabled' : ''}>−</button>
+                    <button type="button" onclick="changeQty('${escapeAttr(p.id)}', -1)" ${!isAvailable ? 'disabled' : ''}>−</button>
                     <span id="qty-${escapeAttr(p.id)}">${qty}</span>
-                    <button type="button" aria-label="Aumentar" onclick="changeQty('${escapeAttr(p.id)}', 1)" ${!isAvailable ? 'disabled' : ''}>+</button>
+                    <button type="button" onclick="changeQty('${escapeAttr(p.id)}', 1)" ${!isAvailable ? 'disabled' : ''}>+</button>
                   </div>
                 </div>
               </div>
@@ -136,6 +144,11 @@ function renderMenu() {
 }
 
 window.changeQty = function(id, delta) {
+  if (!storeOpen) {
+    alert("A loja está fechada no momento e não está aceitando pedidos!");
+    return;
+  }
+
   const product = productsList.find(p => p.id === id);
   if (!product || product.disponivel === false) return;
 
@@ -162,7 +175,7 @@ function updateCartSummary() {
     const prod = productsList.find(p => p.id === id);
     if (prod) {
       totalQty += qty;
-      totalPrice += prod.preco * qty;
+      totalPrice += Number(prod.preco || 0) * qty;
     }
   });
 
@@ -215,7 +228,7 @@ function renderCartModal() {
   entries.forEach(([id, qty]) => {
     const prod = productsList.find(p => p.id === id);
     if (prod) {
-      const subtotal = prod.preco * qty;
+      const subtotal = Number(prod.preco || 0) * qty;
       total += subtotal;
       html += `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:8px;">
@@ -265,7 +278,7 @@ async function handleCheckout(event) {
     return {
       id,
       nome: prod?.nome || "Produto",
-      preco: prod?.preco || 0,
+      preco: Number(prod?.preco || 0),
       quantidade: qty
     };
   });
@@ -284,10 +297,12 @@ async function handleCheckout(event) {
   };
 
   try {
+    // 1. Grava no Firebase Realtime Database para aparecer no Dashboard do Admin
     if (db) {
       await db.ref(`pedidos/${orderId}`).set(orderData);
     }
 
+    // 2. Monta a mensagem e envia para o WhatsApp da Administradora
     let msg = `*NOVO PEDIDO: #${orderId}*\n\n`;
     msg += `*Cliente:* ${nome}\n`;
     msg += `*Telefone:* ${telefone}\n`;
@@ -299,14 +314,14 @@ async function handleCheckout(event) {
     });
     msg += `\n*TOTAL: ${money(total)}*`;
 
-    const whatsappNumber = "5596999999999";
-    window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(msg)}`, "_blank");
+    // Redireciona para o WhatsApp configurado no topo
+    window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`, "_blank");
 
     cart = {};
     updateCartSummary();
     $("cartModal")?.classList.remove("open");
     $("checkoutForm")?.reset();
-    alert("Pedido realizado com sucesso!");
+    alert("Pedido enviado com sucesso!");
 
   } catch (err) {
     console.error("Erro ao salvar pedido:", err);
