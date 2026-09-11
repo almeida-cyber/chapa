@@ -336,8 +336,10 @@ function renderAdminProducts(productsObj) {
 
   container.innerHTML = keys.map(key => {
     const prod = productsObj[key];
+    const isAvailable = prod.disponivel !== false;
+
     return `
-      <div style="display: flex; align-items: center; justify-content: space-between; border: 1px solid #eee; padding: 8px 12px; border-radius: 8px; background: #fafafa;">
+      <div style="display: flex; align-items: center; justify-content: space-between; border: 1px solid #eee; padding: 8px 12px; border-radius: 8px; background: #fafafa; margin-bottom: 8px;">
         <div style="display: flex; align-items: center; gap: 10px;">
           <img src="${prod.imagem}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px;" onerror="this.src='https://placehold.co/100?text=Foto'">
           <div>
@@ -345,19 +347,29 @@ function renderAdminProducts(productsObj) {
             <span style="font-size: 11px; color: #777;">${esc(prod.categoria)} • ${money(prod.preco)}</span>
           </div>
         </div>
-        <button onclick="deleteProduct('${key}')" style="background: #d92323; color: white; border: 0; padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;">Excluir</button>
+
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <!-- BOTÃO DE ALTERNAR STATUS (DISPONÍVEL / ESGOTADO) -->
+          <button onclick="toggleAvailability('${key}', ${isAvailable})" style="background: ${isAvailable ? '#1b9a59' : '#d92323'}; color: white; border: 0; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">
+            ${isAvailable ? '🟢 Disponível' : '🔴 Esgotado'}
+          </button>
+
+          <button onclick="deleteProduct('${key}')" style="background: #777; color: white; border: 0; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;">
+            Excluir
+          </button>
+        </div>
       </div>
     `;
   }).join("");
 }
 
-window.deleteProduct = async function(key) {
-  if (confirm("Tem certeza que deseja remover este produto?")) {
-    try {
-      await db.ref(`produtos/${key}`).remove();
-    } catch (err) {
-      alert("Erro ao excluir produto: " + err.message);
-    }
+// Alterna o status do produto entre disponível e esgotado no Firebase
+window.toggleAvailability = async function(key, currentStatus) {
+  if (!auth?.currentUser) return alert("Sessão expirada.");
+  try {
+    await db.ref(`produtos/${key}/disponivel`).set(!currentStatus);
+  } catch (err) {
+    alert("Erro ao alterar disponibilidade: " + err.message);
   }
 };
 
