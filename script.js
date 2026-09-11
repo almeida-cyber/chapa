@@ -1,5 +1,4 @@
-// ⚠️ ATENÇÃO: COLOQUE SEU NÚMERO DO WHATSAPP AQUI (Com 55 + DDD + Número)
-const ADMIN_WHATSAPP = "559694352841"; 
+const ADMIN_WHATSAPP = "5596984352841"; 
 
 let db = null;
 let productsList = [];
@@ -15,10 +14,6 @@ function escapeHtml(text) {
   })[match]);
 }
 
-function escapeAttr(text) {
-  return escapeHtml(text).replace(/'/g, "&#039;");
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   initFirebase();
   setupCartEvents();
@@ -26,61 +21,41 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function initFirebase() {
   try {
-    if (!window.firebase) throw new Error("Firebase SDK não foi carregado.");
+    if (!window.firebase) throw new Error("Firebase SDK não carregado.");
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     db = firebase.database();
 
-    // Sincroniza o status da loja (Aberta / Fechada)
     db.ref("configuracoes/lojaAberta").on("value", snap => {
       storeOpen = snap.exists() ? snap.val() === true : true;
       updateStoreStatus();
-      renderMenu(); // Re-renderiza para ativar/desativar botões
-    }, () => {
-      storeOpen = true;
-      updateStoreStatus();
+      renderMenu(); 
     });
 
-    // Carrega produtos dinamicamente do Firebase
     db.ref("produtos").on("value", snap => {
       const data = snap.val() || {};
-      
       productsList = Object.keys(data).map(key => ({
         id: key,
         ...data[key],
-        preco: Number(data[key].preco || 0) // Garante que o preço é numérico
+        preco: Number(data[key].preco || 0)
       }));
-
-      renderMenu();
-    }, error => {
-      console.error("Erro ao ler produtos do Firebase:", error);
-      productsList = [];
       renderMenu();
     });
-
   } catch (err) {
-    console.error("Erro ao inicializar Firebase:", err);
+    console.error("Erro Firebase:", err);
   }
 }
 
 function updateStoreStatus() {
-  const badge = $("storeBadge") || $("storeStatus");
+  const badge = $("storeBadge");
   const banner = $("storeStatusBanner");
 
   if (badge) {
-    if (storeOpen) {
-      badge.textContent = "🟢 Loja Aberta";
-      badge.style.background = "#e6f4ea";
-      badge.style.color = "#137333";
-    } else {
-      badge.textContent = "🔴 Loja Fechada";
-      badge.style.background = "#fce8e6";
-      badge.style.color = "#c5221f";
-    }
+    badge.textContent = storeOpen ? "🟢 Loja Aberta" : "🔴 Loja Fechada";
+    badge.style.background = storeOpen ? "#e6f4ea" : "#fce8e6";
+    badge.style.color = storeOpen ? "#137333" : "#c5221f";
   }
-
   if (banner) {
     banner.style.display = storeOpen ? "none" : "block";
-    banner.textContent = "🔴 Estamos fechados no momento. Não estamos aceitando novos pedidos.";
   }
 }
 
@@ -89,7 +64,7 @@ function renderMenu() {
   if (!menu) return;
 
   if (!productsList.length) {
-    menu.innerHTML = "<p style='text-align:center; grid-column: 1/-1;'>Nenhum produto disponível no momento.</p>";
+    menu.innerHTML = "<p style='text-align:center;'>Cardápio vazio no momento.</p>";
     return;
   }
 
@@ -101,42 +76,35 @@ function renderMenu() {
   });
 
   let html = "";
-
-  Object.entries(categories).forEach(([categoryName, items]) => {
-    const categoryIcon = categoryName === "Bebidas" ? "🥤" : "🍱";
-
-    html += `
-      <div class="category-section" style="grid-column: 1 / -1; margin-top: 15px;">
-        <h2 class="category-title">${categoryIcon} ${escapeHtml(categoryName)}</h2>
-        <div class="menu-grid">
-          ${items.map(p => {
-            const isAvailable = storeOpen && (p.disponivel !== false);
-            const qty = cart[p.id] || 0;
-
-            return `
-            <article class="product ${!isAvailable ? 'out-of-stock' : ''}">
-              <div style="position: relative;">
-                <img src="${escapeAttr(p.imagem)}" alt="${escapeAttr(p.nome)}" onerror="this.src='https://placehold.co/800x500/f3f3f3/777?text=Sem+Foto'">
-                ${!storeOpen ? '<span class="badge-esgotado">LOJA FECHADA</span>' : (!p.disponivel ? '<span class="badge-esgotado">ESGOTADO</span>' : '')}
-              </div>
-              <div class="product-body">
-                <h3>${escapeHtml(p.nome)}</h3>
-                <p>${escapeHtml(p.descricao)}</p>
-                <div class="product-bottom">
-                  <span class="price">${money(p.preco)}</span>
-                  <div class="qty">
-                    <button type="button" onclick="changeQty('${escapeAttr(p.id)}', -1)" ${!isAvailable ? 'disabled' : ''}>−</button>
-                    <span id="qty-${escapeAttr(p.id)}">${qty}</span>
-                    <button type="button" onclick="changeQty('${escapeAttr(p.id)}', 1)" ${!isAvailable ? 'disabled' : ''}>+</button>
-                  </div>
+  Object.entries(categories).forEach(([catName, items]) => {
+    html += `<div style="grid-column: 1 / -1; margin-top: 15px;">
+      <h2 style="font-size: 20px;">${escapeHtml(catName)}</h2>
+      <div class="menu-grid">
+        ${items.map(p => {
+          const isAvailable = storeOpen && p.disponivel !== false;
+          const qty = cart[p.id] || 0;
+          return `
+          <article class="product ${!isAvailable ? 'out-of-stock' : ''}">
+            <div style="position: relative;">
+              <img src="${p.imagem}" onerror="this.src='https://placehold.co/400?text=Sem+Foto'">
+              ${!storeOpen ? '<span class="badge-esgotado">FECHADO</span>' : (!p.disponivel ? '<span class="badge-esgotado">ESGOTADO</span>' : '')}
+            </div>
+            <div class="product-body">
+              <h3>${escapeHtml(p.nome)}</h3>
+              <p>${escapeHtml(p.descricao)}</p>
+              <div class="product-bottom">
+                <span class="price">${money(p.preco)}</span>
+                <div class="qty">
+                  <button type="button" onclick="changeQty('${p.id}', -1)">−</button>
+                  <span id="qty-${p.id}">${qty}</span>
+                  <button type="button" onclick="changeQty('${p.id}', 1)">+</button>
                 </div>
               </div>
-            </article>
-          `;
-          }).join("")}
-        </div>
+            </div>
+          </article>`;
+        }).join("")}
       </div>
-    `;
+    </div>`;
   });
 
   menu.innerHTML = html;
@@ -144,26 +112,19 @@ function renderMenu() {
 }
 
 window.changeQty = function(id, delta) {
-  if (!storeOpen) {
-    alert("A loja está fechada no momento e não está aceitando pedidos!");
-    return;
-  }
-
+  if (!storeOpen) return alert("A loja está fechada!");
+  
   const product = productsList.find(p => p.id === id);
   if (!product || product.disponivel === false) return;
 
   const currentQty = cart[id] || 0;
   const newQty = Math.max(0, currentQty + delta);
 
-  if (newQty === 0) {
-    delete cart[id];
-  } else {
-    cart[id] = newQty;
-  }
+  if (newQty === 0) delete cart[id];
+  else cart[id] = newQty;
 
   const qtySpan = $(`qty-${id}`);
   if (qtySpan) qtySpan.textContent = newQty;
-
   updateCartSummary();
 };
 
@@ -179,46 +140,32 @@ function updateCartSummary() {
     }
   });
 
-  const totalQtyEl = $("cartTotalQty");
-  const totalPriceEl = $("cartTotalPrice");
+  if ($("cartTotalQty")) $("cartTotalQty").textContent = totalQty;
+  if ($("cartTotalPrice")) $("cartTotalPrice").textContent = money(totalPrice);
+  
   const floatCart = $("floatingCart");
-
-  if (totalQtyEl) totalQtyEl.textContent = totalQty;
-  if (totalPriceEl) totalPriceEl.textContent = money(totalPrice);
-  if (floatCart) floatCart.classList.toggle("active", totalQty > 0);
+  if (floatCart) floatCart.style.display = totalQty > 0 ? "block" : "none";
 }
 
 function setupCartEvents() {
-  const openCartBtn = $("openCartBtn");
-  const closeCartBtn = $("closeCartBtn");
-  const cartModal = $("cartModal");
-  const checkoutForm = $("checkoutForm");
-
-  if (openCartBtn && cartModal) {
-    openCartBtn.addEventListener("click", () => {
-      renderCartModal();
-      cartModal.classList.add("open");
-    });
-  }
-
-  if (closeCartBtn && cartModal) {
-    closeCartBtn.addEventListener("click", () => {
-      cartModal.classList.remove("open");
-    });
-  }
-
-  if (checkoutForm) {
-    checkoutForm.addEventListener("submit", handleCheckout);
-  }
+  $("openCartBtn")?.addEventListener("click", () => {
+    renderCartModal();
+    $("cartModal").style.display = "flex";
+  });
+  $("closeCartBtn")?.addEventListener("click", () => {
+    $("cartModal").style.display = "none";
+  });
+  $("checkoutForm")?.addEventListener("submit", handleCheckout);
 }
 
 function renderCartModal() {
-  const cartItemsContainer = $("cartItemsList");
-  if (!cartItemsContainer) return;
+  const container = $("cartItemsList");
+  if (!container) return;
 
   const entries = Object.entries(cart);
   if (!entries.length) {
-    cartItemsContainer.innerHTML = "<p style='text-align:center; color:#777;'>Seu carrinho está vazio.</p>";
+    container.innerHTML = "<p>Carrinho vazio.</p>";
+    if ($("modalTotal")) $("modalTotal").textContent = money(0);
     return;
   }
 
@@ -228,59 +175,36 @@ function renderCartModal() {
   entries.forEach(([id, qty]) => {
     const prod = productsList.find(p => p.id === id);
     if (prod) {
-      const subtotal = Number(prod.preco || 0) * qty;
-      total += subtotal;
-      html += `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:8px;">
-          <div>
-            <strong>${escapeHtml(prod.nome)}</strong><br>
-            <small>${qty}x ${money(prod.preco)}</small>
-          </div>
-          <div>
-            <strong>${money(subtotal)}</strong>
-          </div>
-        </div>
-      `;
+      const sub = Number(prod.preco || 0) * qty;
+      total += sub;
+      html += `<div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; padding:8px 0;">
+        <span>${qty}x ${escapeHtml(prod.nome)}</span>
+        <strong>${money(sub)}</strong>
+      </div>`;
     }
   });
 
-  cartItemsContainer.innerHTML = html;
+  container.innerHTML = html;
   if ($("modalTotal")) $("modalTotal").textContent = money(total);
 }
 
 async function handleCheckout(event) {
   event.preventDefault();
 
-  if (!storeOpen) {
-    alert("A loja está fechada no momento. Não é possível enviar o pedido.");
-    return;
-  }
-
+  if (!storeOpen) return alert("Loja fechada!");
+  
   const entries = Object.entries(cart);
-  if (!entries.length) {
-    alert("Adicione pelo menos um item ao carrinho.");
-    return;
-  }
+  if (!entries.length) return alert("Carrinho vazio!");
 
-  const nome = $("custName")?.value.trim() || "";
-  const telefone = $("custPhone")?.value.trim() || "";
-  const bairro = $("custBairro")?.value.trim() || "";
-  const recebimento = $("custRecebimento")?.value || "Entrega";
-  const pagamento = $("custPagamento")?.value || "Pix";
-
-  if (!nome || !telefone) {
-    alert("Por favor, preencha nome e telefone.");
-    return;
-  }
+  const nome = $("custName").value.trim();
+  const telefone = $("custPhone").value.trim();
+  const bairro = $("custBairro").value.trim();
+  const recebimento = $("custRecebimento").value;
+  const pagamento = $("custPagamento").value;
 
   const itens = entries.map(([id, qty]) => {
     const prod = productsList.find(p => p.id === id);
-    return {
-      id,
-      nome: prod?.nome || "Produto",
-      preco: Number(prod?.preco || 0),
-      quantidade: qty
-    };
+    return { id, nome: prod.nome, preco: Number(prod.preco), quantidade: qty };
   });
 
   const total = itens.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
@@ -289,42 +213,23 @@ async function handleCheckout(event) {
   const orderData = {
     id: orderId,
     cliente: { nome, telefone, bairro, recebimento },
-    pagamento,
-    itens,
-    total,
-    status: "Novo",
-    criadoEm: Date.now()
+    pagamento, itens, total, status: "Novo", criadoEm: Date.now()
   };
 
   try {
-    // 1. Grava no Firebase Realtime Database para aparecer no Dashboard do Admin
-    if (db) {
-      await db.ref(`pedidos/${orderId}`).set(orderData);
-    }
+    if (db) await db.ref(`pedidos/${orderId}`).set(orderData);
 
-    // 2. Monta a mensagem e envia para o WhatsApp da Administradora
-    let msg = `*NOVO PEDIDO: #${orderId}*\n\n`;
-    msg += `*Cliente:* ${nome}\n`;
-    msg += `*Telefone:* ${telefone}\n`;
-    msg += `*Forma:* ${recebimento} (${bairro})\n`;
-    msg += `*Pagamento:* ${pagamento}\n\n`;
-    msg += `*ITENS:*\n`;
-    itens.forEach(i => {
-      msg += `• ${i.quantidade}x ${i.nome} - ${money(i.preco * i.quantidade)}\n`;
-    });
+    let msg = `*NOVO PEDIDO: #${orderId}*\n\n*Cliente:* ${nome}\n*Telefone:* ${telefone}\n*Forma:* ${recebimento} (${bairro})\n*Pagamento:* ${pagamento}\n\n*ITENS:*\n`;
+    itens.forEach(i => msg += `• ${i.quantidade}x ${i.nome} - ${money(i.preco * i.quantidade)}\n`);
     msg += `\n*TOTAL: ${money(total)}*`;
 
-    // Redireciona para o WhatsApp configurado no topo
     window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`, "_blank");
 
     cart = {};
     updateCartSummary();
-    $("cartModal")?.classList.remove("open");
-    $("checkoutForm")?.reset();
-    alert("Pedido enviado com sucesso!");
-
+    $("cartModal").style.display = "none";
+    $("checkoutForm").reset();
   } catch (err) {
-    console.error("Erro ao salvar pedido:", err);
-    alert("Erro ao processar o pedido: " + err.message);
+    alert("Erro ao processar: " + err.message);
   }
 }
