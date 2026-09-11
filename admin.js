@@ -8,6 +8,13 @@ let productsRef = null;
 let ordersCache = {};
 let shiftStart = 0;
 
+// Lista fixa das 3 marmitas padrão do projeto
+const DEFAULT_PRODUCTS = [
+  { id: "def-frango", nome: "Marmita de Frango", descricao: "Acompanha arroz, feijão e salada", preco: 18.00, categoria: "Marmitas", imagem: "https://placehold.co/800x500/f3f3f3/777?text=Marmita+Frango" },
+  { id: "def-calabresa", nome: "Marmita de Calabresa", descricao: "Acompanha arroz, feijão e salada", preco: 18.00, categoria: "Marmitas", imagem: "https://placehold.co/800x500/f3f3f3/777?text=Marmita+Calabresa" },
+  { id: "def-carne", nome: "Marmita de Carne", descricao: "Acompanha arroz, feijão e salada", preco: 20.00, categoria: "Marmitas", imagem: "https://placehold.co/800x500/f3f3f3/777?text=Marmita+Carne" }
+];
+
 const money = value => Number(value || 0).toLocaleString("pt-BR", {
   style: "currency",
   currency: "BRL"
@@ -32,8 +39,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     auth.onAuthStateChanged(user => {
       const logged = !!user;
-      $("loginScreen").classList.toggle("hidden", logged);
-      $("dashboard").classList.toggle("hidden", !logged);
+      $("loginScreen")?.classList.toggle("hidden", logged);
+      $("dashboard")?.classList.toggle("hidden", !logged);
 
       if (logged) {
         console.log("Administrador autenticado:", user.uid);
@@ -43,12 +50,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    $("loginForm").addEventListener("submit", login);
-    $("logout").addEventListener("click", () => auth.signOut());
+    $("loginForm")?.addEventListener("submit", login);
+    $("logout")?.addEventListener("click", () => auth.signOut());
     
     if ($("btnPrint")) $("btnPrint").addEventListener("click", printReport);
     if ($("btnReset")) $("btnReset").addEventListener("click", resetDashboard);
-    $("storeToggle").addEventListener("click", toggleStore);
+    $("storeToggle")?.addEventListener("click", toggleStore);
 
     const productForm = $("productForm");
     if (productForm) {
@@ -56,13 +63,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   } catch (error) {
     console.error("Erro ao iniciar Firebase:", error);
-    $("loginError").textContent = "Erro ao iniciar Firebase: " + error.message;
+    if ($("loginError")) $("loginError").textContent = "Erro ao iniciar Firebase: " + error.message;
   }
 });
 
 async function login(event) {
   event.preventDefault();
-  $("loginError").textContent = "";
+  if ($("loginError")) $("loginError").textContent = "";
 
   try {
     await auth.signInWithEmailAndPassword(
@@ -71,7 +78,7 @@ async function login(event) {
     );
   } catch (error) {
     console.error("Erro no login:", error);
-    $("loginError").textContent = firebaseAuthError(error);
+    if ($("loginError")) $("loginError").textContent = firebaseAuthError(error);
   }
 }
 
@@ -106,8 +113,10 @@ function startDashboard() {
   storeRef.on("value", snapshot => {
     const open = snapshot.exists() ? snapshot.val() === true : true;
     const button = $("storeToggle");
-    button.textContent = open ? "● Aberta" : "● Fechada";
-    button.className = open ? "open" : "";
+    if (button) {
+      button.textContent = open ? "● Aberta" : "● Fechada";
+      button.className = open ? "open" : "";
+    }
   });
 
   ordersQuery = db.ref("pedidos").orderByChild("criadoEm").limitToLast(100);
@@ -132,7 +141,8 @@ function stopDashboard() {
 }
 
 async function toggleStore() {
-  const current = $("storeToggle").classList.contains("open");
+  const button = $("storeToggle");
+  const current = button ? button.classList.contains("open") : false;
   try {
     await db.ref("configuracoes/lojaAberta").set(!current);
   } catch (error) {
@@ -156,10 +166,10 @@ function renderDashboard() {
 
   const sales = valid.reduce((sum, order) => sum + Number(order.total || 0), 0);
 
-  $("statOrders").textContent = todayOrders.length;
-  $("statMeals").textContent = meals;
-  $("statSales").textContent = money(sales);
-  $("statTicket").textContent = money(valid.length ? sales / valid.length : 0);
+  if ($("statOrders")) $("statOrders").textContent = todayOrders.length;
+  if ($("statMeals")) $("statMeals").textContent = meals;
+  if ($("statSales")) $("statSales").textContent = money(sales);
+  if ($("statTicket")) $("statTicket").textContent = money(valid.length ? sales / valid.length : 0);
 
   renderOrders(orders.slice(0, 30));
   renderPayments(valid);
@@ -168,6 +178,7 @@ function renderDashboard() {
 
 function renderOrders(orders) {
   const element = $("orders");
+  if (!element) return;
 
   if (!orders.length) {
     element.innerHTML = "<p>Nenhum pedido registrado.</p>";
@@ -196,7 +207,7 @@ function renderOrders(orders) {
         ${esc(order.pagamento || "")}
       </div>
 
-     <div class="order-footer" style="display: flex; gap: 8px; align-items: center; justify-content: space-between;">
+     <div class="order-footer" style="display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-top: 10px;">
         <select onchange="updateStatus('${escAttr(order.id)}', this.value)">
           ${["Novo", "Em preparo", "Pronto para retirada", "Saiu para entrega", "Concluído", "Cancelado"].map(status => `
             <option ${status === order.status ? "selected" : ""}>${status}</option>
@@ -221,13 +232,15 @@ window.updateStatus = async function(id, status) {
 };
 
 function renderPayments(orders) {
+  const el = $("payments");
+  if (!el) return;
   const totals = {};
   orders.forEach(order => {
     const payment = order.pagamento || "Não informado";
     totals[payment] = (totals[payment] || 0) + Number(order.total || 0);
   });
 
-  $("payments").innerHTML = Object.keys(totals).length
+  el.innerHTML = Object.keys(totals).length
     ? Object.entries(totals).map(([key, value]) => `
         <div class="metric-line"><span>${esc(key)}</span><strong>${money(value)}</strong></div>
       `).join("")
@@ -235,25 +248,28 @@ function renderPayments(orders) {
 }
 
 function renderProducts(orders) {
+  const el = $("products");
+  if (!el) return;
   const totals = {};
   orders.forEach(order => (order.itens || []).forEach(item => {
     const name = item.nome || "Produto";
     totals[name] = (totals[name] || 0) + Number(item.quantidade || 0);
   }));
 
-  $("products").innerHTML = Object.keys(totals).length
+  el.innerHTML = Object.keys(totals).length
     ? Object.entries(totals).sort((a, b) => b[1] - a[1]).map(([key, value]) => `
         <div class="metric-line"><span>${esc(key)}</span><strong>${value} un.</strong></div>
       `).join("")
     : "<p>Nenhuma venda hoje.</p>";
 }
 
-// SALVAR PRODUTO COM COMPRESSÃO AUTOMÁTICA DE IMAGEM
 async function handleSaveProduct(event) {
   event.preventDefault();
   const msgEl = $("prodMsg");
-  msgEl.textContent = "Processando imagem e salvando...";
-  msgEl.style.color = "#777";
+  if (msgEl) {
+    msgEl.textContent = "Processando imagem e salvando...";
+    msgEl.style.color = "#777";
+  }
 
   const nome = $("prodNome").value.trim();
   const categoria = $("prodCategoria").value;
@@ -262,8 +278,10 @@ async function handleSaveProduct(event) {
   const fileInput = $("prodImgFile");
 
   if (!fileInput.files || !fileInput.files[0]) {
-    msgEl.textContent = "Selecione uma imagem para o produto.";
-    msgEl.style.color = "red";
+    if (msgEl) {
+      msgEl.textContent = "Selecione uma imagem para o produto.";
+      msgEl.style.color = "red";
+    }
     return;
   }
 
@@ -281,17 +299,20 @@ async function handleSaveProduct(event) {
       criadoEm: Date.now()
     });
 
-    msgEl.textContent = "Produto cadastrado com sucesso!";
-    msgEl.style.color = "green";
+    if (msgEl) {
+      msgEl.textContent = "Produto cadastrado com sucesso!";
+      msgEl.style.color = "green";
+    }
     $("productForm").reset();
   } catch (err) {
     console.error("Erro ao salvar produto:", err);
-    msgEl.textContent = "Erro ao salvar: " + (err.message || "Verifique o console do navegador");
-    msgEl.style.color = "red";
+    if (msgEl) {
+      msgEl.textContent = "Erro ao salvar: " + (err.message || "Verifique o console do navegador");
+      msgEl.style.color = "red";
+    }
   }
 }
 
-// COMPRESSÃO DE FOTOS
 function compressImage(file, maxWidth = 800, quality = 0.7) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -322,27 +343,39 @@ function compressImage(file, maxWidth = 800, quality = 0.7) {
   });
 }
 
-// LISTA DE PRODUTOS COM DISPONÍVEL / ESGOTADO E EXCLUIR
 function renderAdminProducts(productsObj) {
   const container = $("adminProductList");
   if (!container) return;
 
-  const keys = Object.keys(productsObj);
-  if (!keys.length) {
-    container.innerHTML = "<p style='color:#777; font-size:13px;'>Nenhum produto cadastrado no banco.</p>";
-    return;
+  const allProductsMap = {};
+
+  DEFAULT_PRODUCTS.forEach(item => {
+    allProductsMap[item.id] = { ...item, disponivel: true };
+  });
+
+  if (productsObj) {
+    Object.keys(productsObj).forEach(key => {
+      allProductsMap[key] = {
+        id: key,
+        ...allProductsMap[key],
+        ...productsObj[key]
+      };
+    });
   }
 
+  const keys = Object.keys(allProductsMap);
+
   container.innerHTML = keys.map(key => {
-    const prod = productsObj[key];
+    const prod = allProductsMap[key];
     const isAvailable = prod.disponivel !== false;
+    const isDefault = key.startsWith("def-");
 
     return `
       <div style="display: flex; align-items: center; justify-content: space-between; border: 1px solid #eee; padding: 8px 12px; border-radius: 8px; background: #fafafa; margin-bottom: 8px;">
         <div style="display: flex; align-items: center; gap: 10px;">
           <img src="${prod.imagem}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px;" onerror="this.src='https://placehold.co/100?text=Foto'">
           <div>
-            <strong style="font-size: 13px; display: block;">${esc(prod.nome)}</strong>
+            <strong style="font-size: 13px; display: block;">${esc(prod.nome)} ${isDefault ? '<small style="color:#2196F3">(Padrão)</small>' : ''}</strong>
             <span style="font-size: 11px; color: #777;">${esc(prod.categoria)} • ${money(prod.preco)}</span>
           </div>
         </div>
@@ -352,26 +385,37 @@ function renderAdminProducts(productsObj) {
             ${isAvailable ? '🟢 Disponível' : '🔴 Esgotado'}
           </button>
 
-          <button onclick="deleteProduct('${key}')" style="background: #777; color: white; border: 0; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;">
-            Excluir
-          </button>
+          ${!isDefault ? `
+            <button onclick="deleteProduct('${key}')" style="background: #777; color: white; border: 0; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;">
+              Excluir
+            </button>
+          ` : ''}
         </div>
       </div>
     `;
   }).join("");
 }
 
-// MARCAR COMO ESGOTADO OU DISPONÍVEL
 window.toggleAvailability = async function(key, currentStatus) {
   if (!auth?.currentUser) return alert("Sessão expirada. Faça login novamente.");
+  
   try {
-    await db.ref(`produtos/${key}/disponivel`).set(!currentStatus);
+    const isDefault = key.startsWith("def-");
+    const defaultItem = DEFAULT_PRODUCTS.find(p => p.id === key);
+
+    if (isDefault && defaultItem) {
+      await db.ref(`produtos/${key}`).set({
+        ...defaultItem,
+        disponivel: !currentStatus
+      });
+    } else {
+      await db.ref(`produtos/${key}/disponivel`).set(!currentStatus);
+    }
   } catch (err) {
     alert("Erro ao alterar disponibilidade: " + err.message);
   }
 };
 
-// EXCLUIR PRODUTO
 window.deleteProduct = async function(key) {
   if (!auth || !auth.currentUser) {
     alert("Sua sessão expirou. Faça login novamente no painel.");
@@ -393,7 +437,7 @@ function formatDate(value) {
   try {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return String(value || "");
-    return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Belem" });
+    return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
   } catch {
     return String(value || "");
   }
