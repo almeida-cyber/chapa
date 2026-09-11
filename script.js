@@ -17,8 +17,8 @@ document.addEventListener("DOMContentLoaded", () => {
 function initFirebase(){
   try{
     if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    db = firebase.database();
     
+    db = firebase.database();
     db.ref("configuracoes/lojaAberta").on("value", snap => {
       storeOpen = snap.exists() ? snap.val() === true : true;
       updateStoreStatus();
@@ -27,19 +27,28 @@ function initFirebase(){
       updateStoreStatus("offline");
     });
 
-    db.ref("produtos").on("value", snap => {
-      const data = snap.val();
-      if (data) {
-        productsList = Object.keys(data).map(key => ({
-          id: key,
-          ...data[key]
-        }));
-      } else {
-        productsList = CONFIG.produtos.map(p => ({ ...p, categoria: "Marmitas" }));
-      }
-      renderMenu();
-    });
+    // Leitura dos produtos cadastrados + produtos padrão
+db.ref("produtos").on("value", snap => {
+  const data = snap.val();
+  
+  // Converte os produtos cadastrados no Firebase
+  const firebaseProducts = data ? Object.keys(data).map(key => ({
+    id: key,
+    ...data[key]
+  })) : [];
 
+  // Pega os 3 produtos padrões do CONFIG.produtos
+  const defaultProducts = (CONFIG.produtos || []).map(p => ({
+    ...p,
+    categoria: p.categoria || "Marmitas"
+  }));
+
+  // Mescla os produtos fixos com os novos produtos salvos no Firebase
+  productsList = [...defaultProducts, ...firebaseProducts];
+  renderMenu();
+}, error => {
+  console.error("Erro ao ler produtos do Firebase:", error);
+});
   }catch(error){
     console.error(error);
     updateStoreStatus("offline");
