@@ -7,8 +7,6 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-  <!-- Cabeçalho -->
   <header style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #fff; border-bottom: 1px solid #eee;">
     <div>
       <h1 style="margin: 0; font-size: 20px;">Comida na Chapa</h1>
@@ -19,31 +17,25 @@
     </span>
   </header>
 
-  <!-- Banner de Loja Fechada -->
   <div id="storeStatusBanner" style="display: none; background: #fce8e6; color: #c5221f; text-align: center; padding: 12px; font-weight: bold; font-size: 14px;">
     🔴 Estamos fechados no momento. Não estamos aceitando novos pedidos.
   </div>
 
-  <!-- Banner de Destaque -->
   <main style="max-width: 900px; margin: 20px auto; padding: 0 15px;">
     <div style="background: #e52e2e; color: white; padding: 25px; border-radius: 16px; margin-bottom: 20px;">
       <small style="text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Cardápio Digital</small>
       <h2 style="margin: 10px 0; font-size: 28px;">Escolha sua marmita ou bebida</h2>
       <p style="margin: 0; opacity: 0.9;">Monte seu pedido e envie diretamente pelo WhatsApp.</p>
     </div>
-
-    <!-- O Cardápio será renderizado aqui -->
     <div id="menu"></div>
   </main>
 
-  <!-- Botão Flutuante do Carrinho -->
-  <div id="floatingCart" style="position: fixed; bottom: 20px; right: 20px; display: none;">
+  <div id="floatingCart" style="position: fixed; bottom: 20px; right: 20px; display: none; z-index: 999;">
     <button id="openCartBtn" style="background: #1b9a59; color: white; border: none; padding: 14px 24px; border-radius: 50px; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
       🛒 Ver Carrinho (<span id="cartTotalQty">0</span>) - <span id="cartTotalPrice">R$ 0,00</span>
     </button>
   </div>
 
-  <!-- Modal do Carrinho e Finalização do Pedido -->
   <div id="cartModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
     <div style="background: white; width: 90%; max-width: 450px; padding: 20px; border-radius: 12px; max-height: 90vh; overflow-y: auto;">
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px;">
@@ -51,7 +43,6 @@
         <button id="closeCartBtn" style="background: none; border: none; font-size: 20px; cursor: pointer;">✕</button>
       </div>
 
-      <!-- Itens Adicionados -->
       <div id="cartItemsList" style="margin: 15px 0;"></div>
 
       <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; margin-bottom: 20px;">
@@ -59,18 +50,15 @@
         <span id="modalTotal">R$ 0,00</span>
       </div>
 
-      <!-- Formulário de Envio do Cliente -->
       <form id="checkoutForm">
         <div style="margin-bottom: 12px;">
           <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px;">Seu Nome *</label>
           <input type="text" id="custName" required placeholder="Digite seu nome" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
         </div>
-
         <div style="margin-bottom: 12px;">
           <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px;">Seu Telefone / WhatsApp *</label>
           <input type="tel" id="custPhone" required placeholder="(96) 99999-9999" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
         </div>
-
         <div style="margin-bottom: 12px;">
           <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px;">Forma de Recebimento</label>
           <select id="custRecebimento" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
@@ -78,12 +66,10 @@
             <option value="Retirada">Retirar no Balcão</option>
           </select>
         </div>
-
         <div style="margin-bottom: 12px;">
           <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px;">Bairro / Endereço</label>
           <input type="text" id="custBairro" placeholder="Rua, número e bairro" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
         </div>
-
         <div style="margin-bottom: 20px;">
           <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px;">Forma de Pagamento</label>
           <select id="custPagamento" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
@@ -92,32 +78,16 @@
             <option value="Dinheiro">Dinheiro</option>
           </select>
         </div>
-
         <button type="submit" style="width: 100%; background: #1b9a59; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;">
-          Enviar Pedido pelo WhatsApp
+          Enviar Pedido
         </button>
       </form>
     </div>
   </div>
 
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  
-  <!-- Configurações do seu Firebase -->
-  <script>
-    const firebaseConfig = {
-      apiKey: "SUA_API_KEY",
-      authDomain: "SEU_PROJECT_ID.firebaseapp.com",
-      databaseURL: "https://SEU_PROJECT_ID-default-rtdb.firebaseio.com",
-      projectId: "SEU_PROJECT_ID",
-      storageBucket: "SEU_PROJECT_ID.appspot.com",
-      messagingSenderId: "SEU_SENDER_ID",
-      appId: "SEU_APP_ID"
-    };
-  </script>
-
-  <!-- Lógica Principal -->
-  <script src="script.js?v=4"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="script.js?v=5"></script>
 </body>
 </html>
