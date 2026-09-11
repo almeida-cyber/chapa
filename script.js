@@ -1,62 +1,95 @@
 let db = null;
+let productsList = [];
 let cart = {};
 let storeOpen = true;
-let productsList = [];
 
-const money = value => Number(value || 0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+// Lista fixa das 3 marmitas padrão do projeto
+const DEFAULT_PRODUCTS = [
+  { id: "def-frango", nome: "Marmita de Frango", descricao: "Acompanha arroz, feijão e salada", preco: 18.00, categoria: "Marmitas", imagem: "https://placehold.co/800x500/f3f3f3/777?text=Marmita+Frango" },
+  { id: "def-calabresa", nome: "Marmita de Calabresa", descricao: "Acompanha arroz, feijão e salada", preco: 18.00, categoria: "Marmitas", imagem: "https://placehold.co/800x500/f3f3f3/777?text=Marmita+Calabresa" },
+  { id: "def-carne", nome: "Marmita de Carne", descricao: "Acompanha arroz, feijão e salada", preco: 20.00, categoria: "Marmitas", imagem: "https://placehold.co/800x500/f3f3f3/777?text=Marmita+Carne" }
+];
+
+const money = value => Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const $ = id => document.getElementById(id);
 
+function escapeHtml(text) {
+  return String(text ?? "").replace(/[&<>"']/g, match => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+  })[match]);
+}
+
+function escapeAttr(text) {
+  return escapeHtml(text).replace(/'/g, "&#039;");
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  $("year").textContent = new Date().getFullYear();
-  $("pixKey").textContent = CONFIG.pixKey;
-  bindEvents();
   initFirebase();
-  updateSummary();
+  setupCartEvents();
 });
 
-function initFirebase(){
-  try{
-    if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    
+function initFirebase() {
+  try {
+    if (!window.firebase) throw new Error("Firebase SDK não foi carregado.");
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     db = firebase.database();
+
+    // Escuta o status de funcionamento da loja
     db.ref("configuracoes/lojaAberta").on("value", snap => {
       storeOpen = snap.exists() ? snap.val() === true : true;
       updateStoreStatus();
     }, () => {
       storeOpen = true;
-      updateStoreStatus("offline");
+      updateStoreStatus();
     });
 
-    // Leitura dos produtos cadastrados + produtos padrão
-db.ref("produtos").on("value", snap => {
-  const data = snap.val();
-  
-  // Converte os produtos cadastrados no Firebase
-  const firebaseProducts = data ? Object.keys(data).map(key => ({
-    id: key,
-    ...data[key]
-  })) : [];
+    // Escuta e mescla os produtos cadastrados com as 3 marmitas padrão
+    db.ref("produtos").on("value", snap => {
+      const data = snap.val() || {};
+      const combinedMap = {};
 
-  // Pega os 3 produtos padrões do CONFIG.produtos
-  const defaultProducts = (CONFIG.produtos || []).map(p => ({
-    ...p,
-    categoria: p.categoria || "Marmitas"
-  }));
+      DEFAULT_PRODUCTS.forEach(p => {
+        combinedMap[p.id] = { ...p, disponivel: true };
+      });
 
-  // Mescla os produtos fixos com os novos produtos salvos no Firebase
-  productsList = [...defaultProducts, ...firebaseProducts];
-  renderMenu();
-}, error => {
-  console.error("Erro ao ler produtos do Firebase:", error);
-});
-  }catch(error){
-    console.error(error);
-    updateStoreStatus("offline");
+      Object.keys(data).forEach(key => {
+        combinedMap[key] = {
+          ...combinedMap[key],
+          ...data[key],
+          id: key
+        };
+      });
+
+      productsList = Object.values(combinedMap);
+      renderMenu();
+    }, error => {
+      console.error("Erro de leitura do Firebase:", error);
+      productsList = DEFAULT_PRODUCTS.map(p => ({ ...p, disponivel: true }));
+      renderMenu();
+    });
+
+  } catch (err) {
+    console.error("Erro ao inicializar Firebase no cliente:", err);
+    productsList = DEFAULT_PRODUCTS.map(p => ({ ...p, disponivel: true }));
+    renderMenu();
   }
 }
 
-function renderMenu(){
+function updateStoreStatus() {
+  const banner = $("storeStatusBanner");
+  if (!banner) return;
+  
+  if (storeOpen) {
+    banner.style.display = "none";
+  } else {
+    banner.style.display = "block";
+    banner.textContent = "🔴 Estamos fechados no momento. Volte em breve!";
+  }
+}
+
+function renderMenu() {
   const menu = $("menu");
+  if (!menu) return;
 
   if (!productsList.length) {
     menu.innerHTML = "<p style='text-align:center; grid-column: 1/-1;'>Nenhum produto cadastrado no momento.</p>";
@@ -74,7 +107,7 @@ function renderMenu(){
 
   Object.entries(categories).forEach(([categoryName, items]) => {
     const categoryIcon = categoryName === "Bebidas" ? "🥤" : "🍱";
-    
+
     html += `
       <div class="category-section" style="grid-column: 1 / -1; margin-top: 15px;">
         <h2 class="category-title">${categoryIcon} ${escapeHtml(categoryName)}</h2>
@@ -95,9 +128,9 @@ function renderMenu(){
                 <div class="product-bottom">
                   <span class="price">${money(p.preco)}</span>
                   <div class="qty">
-                    <button type="button" aria-label="Diminuir" onclick="changeQty('${p.id}',-1)" ${!isAvailable ? 'disabled' : ''}>−</button>
-                    <span id="qty-${p.id}">${qty}</span>
-                    <button type="button" aria-label="Aumentar" onclick="changeQty('${p.id}',1)" ${!isAvailable ? 'disabled' : ''}>+</button>
+                    <button type="button" aria-label="Diminuir" onclick="changeQty('${escapeAttr(p.id)}', -1)" ${!isAvailable ? 'disabled' : ''}>−</button>
+                    <span id="qty-${escapeAttr(p.id)}">${qty}</span>
+                    <button type="button" aria-label="Aumentar" onclick="changeQty('${escapeAttr(p.id)}', 1)" ${!isAvailable ? 'disabled' : ''}>+</button>
                   </div>
                 </div>
               </div>
@@ -110,248 +143,184 @@ function renderMenu(){
   });
 
   menu.innerHTML = html;
+  updateCartSummary();
 }
 
-window.changeQty = function(id, delta){
+window.changeQty = function(id, delta) {
   const product = productsList.find(p => p.id === id);
-  if(!product) return;
-  cart[id] = Math.max(0, (cart[id] || 0) + delta);
-  if(cart[id] === 0) delete cart[id];
-  const el = $(`qty-${id}`);
-  if(el) el.textContent = cart[id] || 0;
-  updateSummary();
+  if (!product || product.disponivel === false) return;
+
+  const currentQty = cart[id] || 0;
+  const newQty = Math.max(0, currentQty + delta);
+
+  if (newQty === 0) {
+    delete cart[id];
+  } else {
+    cart[id] = newQty;
+  }
+
+  const qtySpan = $(`qty-${id}`);
+  if (qtySpan) qtySpan.textContent = newQty;
+
+  updateCartSummary();
 };
 
-function bindEvents(){
-  document.querySelectorAll('input[name="deliveryType"]').forEach(r =>
-    r.addEventListener("change", updateDeliveryVisibility)
-  );
-  $("neighborhood").addEventListener("change", updateSummary);
-  $("payment").addEventListener("change", updatePayment);
-  $("copyPix").addEventListener("click", copyPix);
-  $("orderForm").addEventListener("submit", submitOrder);
-  $("goCheckout").addEventListener("click", () => $("customerName").scrollIntoView({behavior:"smooth",block:"center"}));
+function updateCartSummary() {
+  let totalQty = 0;
+  let totalPrice = 0;
+
+  Object.entries(cart).forEach(([id, qty]) => {
+    const prod = productsList.find(p => p.id === id);
+    if (prod) {
+      totalQty += qty;
+      totalPrice += prod.preco * qty;
+    }
+  });
+
+  const totalQtyEl = $("cartTotalQty");
+  const totalPriceEl = $("cartTotalPrice");
+  const floatCart = $("floatingCart");
+
+  if (totalQtyEl) totalQtyEl.textContent = totalQty;
+  if (totalPriceEl) totalPriceEl.textContent = money(totalPrice);
+  if (floatCart) floatCart.classList.toggle("active", totalQty > 0);
 }
 
-function updateDeliveryVisibility(){
-  const delivery = document.querySelector('input[name="deliveryType"]:checked').value === "delivery";
-  $("deliveryFields").classList.toggle("hidden", !delivery);
-  $("neighborhood").required = delivery;
-  $("address").required = delivery;
-  updateSummary();
+function setupCartEvents() {
+  const openCartBtn = $("openCartBtn");
+  const closeCartBtn = $("closeCartBtn");
+  const cartModal = $("cartModal");
+  const checkoutForm = $("checkoutForm");
+
+  if (openCartBtn && cartModal) {
+    openCartBtn.addEventListener("click", () => {
+      renderCartModal();
+      cartModal.classList.add("open");
+    });
+  }
+
+  if (closeCartBtn && cartModal) {
+    closeCartBtn.addEventListener("click", () => {
+      cartModal.classList.remove("open");
+    });
+  }
+
+  if (checkoutForm) {
+    checkoutForm.addEventListener("submit", handleCheckout);
+  }
 }
 
-function updatePayment(){
-  const payment = $("payment").value;
-  $("changeField").classList.toggle("hidden", payment !== "Dinheiro");
-  $("pixBox").classList.toggle("hidden", payment !== "PIX");
-}
+function renderCartModal() {
+  const cartItemsContainer = $("cartItemsList");
+  if (!cartItemsContainer) return;
 
-function updateSummary(){
-  let subtotal = 0, count = 0;
-  let itemsHtml = "";
+  const entries = Object.entries(cart);
+  if (!entries.length) {
+    cartItemsContainer.innerHTML = "<p style='text-align:center; color:#777;'>Seu carrinho está vazio.</p>";
+    return;
+  }
 
-  productsList.forEach(p => {
-    const qty = cart[p.id] || 0;
-    if (qty > 0) {
-      const itemTotal = qty * p.preco;
-      subtotal += itemTotal;
-      count += qty;
-      itemsHtml += `
-        <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #eee; font-size: 0.9rem;">
-          <span>${qty}x ${escapeHtml(p.nome)}</span>
-          <strong>${money(itemTotal)}</strong>
+  let html = "";
+  let total = 0;
+
+  entries.forEach(([id, qty]) => {
+    const prod = productsList.find(p => p.id === id);
+    if (prod) {
+      const subtotal = prod.preco * qty;
+      total += subtotal;
+      html += `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:8px;">
+          <div>
+            <strong>${escapeHtml(prod.nome)}</strong><br>
+            <small>${qty}x ${money(prod.preco)}</small>
+          </div>
+          <div>
+            <strong>${money(subtotal)}</strong>
+          </div>
         </div>
       `;
     }
   });
 
-  const cartListEl = $("cartItemsList");
-  if (cartListEl) {
-    cartListEl.innerHTML = itemsHtml || "<p style='color: #888; font-size: 0.85rem; margin: 0;'>Nenhum item selecionado</p>";
-  }
-
-  const delivery = document.querySelector('input[name="deliveryType"]:checked')?.value === "delivery";
-  const fee = delivery ? Number(CONFIG.taxas[$("neighborhood").value] || 0) : 0;
-  $("subtotal").textContent = money(subtotal);
-  $("deliveryFee").textContent = money(fee);
-  $("total").textContent = money(subtotal + fee);
-  $("cartCount").textContent = `${count} ${count === 1 ? "item" : "itens"}`;
-  $("cartTotal").textContent = money(subtotal + fee);
-  $("cartBar").classList.toggle("hidden", count === 0);
-  $("sendOrder").disabled = count === 0 || !storeOpen;
+  cartItemsContainer.innerHTML = html;
+  if ($("modalTotal")) $("modalTotal").textContent = money(total);
 }
 
-function updateStoreStatus(mode){
-  const el = $("storeStatus");
-  if(mode === "offline"){
-    el.className = "status open";
-    el.textContent = "● Online";
-  }else if(storeOpen){
-    el.className = "status open";
-    el.textContent = "● Aberta";
-  }else{
-    el.className = "status closed";
-    el.textContent = "● Fechada";
-  }
-  updateSummary();
-}
-
-async function copyPix(){
-  try{
-    await navigator.clipboard.writeText(CONFIG.pixKey);
-    $("copyPix").textContent = "Copiado!";
-    setTimeout(() => $("copyPix").textContent = "Copiar", 1500);
-  }catch{
-    alert("PIX: " + CONFIG.pixKey);
-  }
-}
-
-async function submitOrder(event){
+async function handleCheckout(event) {
   event.preventDefault();
-  const message = $("formMessage");
-  message.textContent = "";
 
-  if(!storeOpen){
-    message.textContent = "A loja está fechada no momento.";
+  if (!storeOpen) {
+    alert("A loja está fechada no momento. Não é possível enviar o pedido.");
     return;
   }
 
-  const items = productsList
-    .filter(p => (cart[p.id] || 0) > 0)
-    .map(p => ({id:p.id,nome:p.nome,quantidade:cart[p.id],preco:p.preco}));
-
-  if(!items.length){
-    message.textContent = "Adicione pelo menos um item.";
+  const entries = Object.entries(cart);
+  if (!entries.length) {
+    alert("Adicione pelo menos um item ao carrinho.");
     return;
   }
 
-  const customerName = document.getElementById("customerName")?.value.trim() || "Cliente";
-  let rawCustomerPhone = document.getElementById("telefone")?.value.trim() || "";
-  
-  let cleanCustomerPhone = rawCustomerPhone.replace(/\D/g, "");
-  if (cleanCustomerPhone && !cleanCustomerPhone.startsWith("55") && cleanCustomerPhone.length <= 11) {
-    cleanCustomerPhone = "55" + cleanCustomerPhone;
-  }
+  const nome = $("custName")?.value.trim() || "";
+  const telefone = $("custPhone")?.value.trim() || "";
+  const bairro = $("custBairro")?.value.trim() || "";
+  const recebimento = $("custRecebimento")?.value || "Entrega";
+  const pagamento = $("custPagamento")?.value || "Pix";
 
-  let storePhone = String(CONFIG.whatsappNumber || "").replace(/\D/g, "");
-  if (storePhone && !storePhone.startsWith("55")) {
-    storePhone = "55" + storePhone;
-  }
-
-  const deliveryType = document.querySelector('input[name="deliveryType"]:checked').value;
-  const recebimento = deliveryType === "delivery" ? "Entrega" : "Retirada";
-  const neighborhood = deliveryType === "delivery" ? $("neighborhood").value : "Retirada";
-  const address = deliveryType === "delivery" ? $("address").value.trim() : "Retirada no local";
-  const payment = $("payment").value;
-  const changeFor = payment === "Dinheiro" ? Number($("changeFor").value || 0) : null;
-
-  if(!payment){
-    message.textContent = "Selecione a forma de pagamento.";
-    $("payment").focus();
+  if (!nome || !telefone) {
+    alert("Por favor, preencha nome e telefone.");
     return;
   }
 
-  if(deliveryType === "delivery" && (!neighborhood || !address)){
-    message.textContent = "Preencha bairro e endereço para entrega.";
-    return;
-  }
+  const itens = entries.map(([id, qty]) => {
+    const prod = productsList.find(p => p.id === id);
+    return {
+      id,
+      nome: prod?.nome || "Produto",
+      preco: prod?.preco || 0,
+      quantidade: qty
+    };
+  });
 
-  if(payment === "Dinheiro" && (!changeFor || changeFor <= 0)){
-    message.textContent = "Informe o valor para o troco.";
-    $("changeFor").focus();
-    return;
-  }
+  const total = itens.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+  const orderId = "ORD-" + Math.floor(1000 + Math.random() * 9000);
 
-  let subtotal = items.reduce((sum,item) => sum + item.preco * item.quantidade, 0);
-  const deliveryFee = deliveryType === "delivery" ? Number(CONFIG.taxas[neighborhood] || 0) : 0;
-  const total = subtotal + deliveryFee;
-
-  if(payment === "Dinheiro" && changeFor < total){
-    message.textContent = "O valor do troco precisa ser maior ou igual ao total.";
-    return;
-  }
-
-  const pedidoId = createOrderId();
-  const order = {
-    id: pedidoId,
-    criadoEm: new Date().toLocaleString("en-US", { hour12: false, timeZone: "America/Belem" }),
+  const orderData = {
+    id: orderId,
+    cliente: { nome, telefone, bairro, recebimento },
+    pagamento,
+    itens,
+    total,
     status: "Novo",
-    cliente: {
-      nome: customerName,
-      telefone: cleanCustomerPhone,
-      recebimento: recebimento,
-      bairro: neighborhood,
-      endereco: address
-    },
-    pagamento: payment,
-    trocoPara: changeFor,
-    observacoes: $("notes").value.trim(),
-    itens: items,
-    subtotal,
-    taxaEntrega: deliveryFee,
-    total
+    criadoEm: Date.now()
   };
 
-  const whatsappText = buildWhatsAppText(order);
-
   try {
-    if(!db) throw new Error("Firebase não inicializado.");
-    await db.ref("pedidos/" + pedidoId).set(order);
-  } catch(error) {
-    console.error(error);
-    message.textContent = "Não foi possível registrar o pedido no sistema.";
-    return;
+    if (db) {
+      await db.ref(`pedidos/${orderId}`).set(orderData);
+    }
+
+    let msg = `*NOVO PEDIDO: #${orderId}*\n\n`;
+    msg += `*Cliente:* ${nome}\n`;
+    msg += `*Telefone:* ${telefone}\n`;
+    msg += `*Forma:* ${recebimento} (${bairro})\n`;
+    msg += `*Pagamento:* ${pagamento}\n\n`;
+    msg += `*ITENS:*\n`;
+    itens.forEach(i => {
+      msg += `• ${i.quantidade}x ${i.nome} - ${money(i.preco * i.quantidade)}\n`;
+    });
+    msg += `\n*TOTAL: ${money(total)}*`;
+
+    const whatsappNumber = "5596999999999";
+    window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(msg)}`, "_blank");
+
+    cart = {};
+    updateCartSummary();
+    $("cartModal")?.classList.remove("open");
+    $("checkoutForm")?.reset();
+    alert("Pedido realizado com sucesso!");
+
+  } catch (err) {
+    console.error("Erro ao salvar pedido:", err);
+    alert("Erro ao processar o pedido: " + err.message);
   }
-
-  window.open(`https://wa.me/${storePhone}?text=${encodeURIComponent(whatsappText)}`, "_blank");
-  cart = {};
-  renderMenu();
-  $("orderForm").reset();
-  $("pixBox").classList.add("hidden");
-  $("changeField").classList.add("hidden");
-  updateDeliveryVisibility();
-  updateSummary();
-  message.textContent = `Pedido ${pedidoId} registrado! O WhatsApp foi aberto.`;
 }
-
-function buildWhatsAppText(order) {
-  const lines = [
-    `*🍳 COMIDA NA CHAPA*`,
-    `*Pedido ${order.id}*`,
-    ``,
-    `*Cliente:* ${order.cliente.nome}`,
-    order.cliente.telefone ? `*Telefone:* ${order.cliente.telefone}` : "",
-    `*Recebimento:* ${order.cliente.recebimento}`,
-    order.cliente.recebimento === "Entrega" ? `*Bairro:* ${order.cliente.bairro}\n*Endereço:* ${order.cliente.endereco}` : `*Local:* Retirada`,
-    ``,
-    `*Itens:*`,
-    ...order.itens.map(i => `• ${i.quantidade}x ${i.nome} — ${money(i.preco * i.quantidade)}`),
-    ``,
-    `Subtotal: ${money(order.subtotal)}`,
-    `Entrega: ${money(order.taxaEntrega)}`,
-    `*TOTAL: ${money(order.total)}*`,
-    `Pagamento: ${order.pagamento}`,
-    order.trocoPara ? `Troco para: ${money(order.trocoPara)}` : "",
-    order.observacoes ? `Observações: ${order.observacoes}` : "",
-    ``,
-    order.pagamento === "PIX" ? `📌 *IMPORTANTE:* Estou enviando o comprovante do PIX a seguir nesta conversa!` : ""
-  ];
-
-  return lines.filter(Boolean).join("\n");
-}
-
-function createOrderId(){
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Belem", year: "numeric", month: "2-digit", day: "2-digit"
-  }).formatToParts(new Date());
-  
-  const get = type => parts.find(part => part.type === type).value;
-  const date = `${get("year")}${get("month")}${get("day")}`;
-  const random = Math.floor(1000 + Math.random() * 9000);
-  
-  return `CN-${date}-${random}`;
-}
-
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
-function escapeAttr(s){return escapeHtml(s)}
