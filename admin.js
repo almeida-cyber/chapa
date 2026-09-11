@@ -8,13 +8,6 @@ let productsRef = null;
 let ordersCache = {};
 let shiftStart = 0;
 
-// Lista fixa das 3 marmitas padrão do projeto
-const DEFAULT_PRODUCTS = [
-  { id: "def-frango", nome: "Marmita de Frango", descricao: "Acompanha arroz, feijão e salada", preco: 18.00, categoria: "Marmitas", imagem: "https://placehold.co/800x500/f3f3f3/777?text=Marmita+Frango" },
-  { id: "def-calabresa", nome: "Marmita de Calabresa", descricao: "Acompanha arroz, feijão e salada", preco: 18.00, categoria: "Marmitas", imagem: "https://placehold.co/800x500/f3f3f3/777?text=Marmita+Calabresa" },
-  { id: "def-carne", nome: "Marmita de Carne", descricao: "Acompanha arroz, feijão e salada", preco: 20.00, categoria: "Marmitas", imagem: "https://placehold.co/800x500/f3f3f3/777?text=Marmita+Carne" }
-];
-
 const money = value => Number(value || 0).toLocaleString("pt-BR", {
   style: "currency",
   currency: "BRL"
@@ -347,35 +340,23 @@ function renderAdminProducts(productsObj) {
   const container = $("adminProductList");
   if (!container) return;
 
-  const allProductsMap = {};
-
-  DEFAULT_PRODUCTS.forEach(item => {
-    allProductsMap[item.id] = { ...item, disponivel: true };
-  });
-
-  if (productsObj) {
-    Object.keys(productsObj).forEach(key => {
-      allProductsMap[key] = {
-        id: key,
-        ...allProductsMap[key],
-        ...productsObj[key]
-      };
-    });
+  if (!productsObj || !Object.keys(productsObj).length) {
+    container.innerHTML = "<p style='color:#777; font-size:13px;'>Nenhum produto cadastrado no banco.</p>";
+    return;
   }
 
-  const keys = Object.keys(allProductsMap);
+  const keys = Object.keys(productsObj);
 
   container.innerHTML = keys.map(key => {
-    const prod = allProductsMap[key];
+    const prod = productsObj[key];
     const isAvailable = prod.disponivel !== false;
-    const isDefault = key.startsWith("def-");
 
     return `
       <div style="display: flex; align-items: center; justify-content: space-between; border: 1px solid #eee; padding: 8px 12px; border-radius: 8px; background: #fafafa; margin-bottom: 8px;">
         <div style="display: flex; align-items: center; gap: 10px;">
           <img src="${prod.imagem}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px;" onerror="this.src='https://placehold.co/100?text=Foto'">
           <div>
-            <strong style="font-size: 13px; display: block;">${esc(prod.nome)} ${isDefault ? '<small style="color:#2196F3">(Padrão)</small>' : ''}</strong>
+            <strong style="font-size: 13px; display: block;">${esc(prod.nome)}</strong>
             <span style="font-size: 11px; color: #777;">${esc(prod.categoria)} • ${money(prod.preco)}</span>
           </div>
         </div>
@@ -385,11 +366,9 @@ function renderAdminProducts(productsObj) {
             ${isAvailable ? '🟢 Disponível' : '🔴 Esgotado'}
           </button>
 
-          ${!isDefault ? `
-            <button onclick="deleteProduct('${key}')" style="background: #777; color: white; border: 0; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;">
-              Excluir
-            </button>
-          ` : ''}
+          <button onclick="deleteProduct('${key}')" style="background: #777; color: white; border: 0; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;">
+            Excluir
+          </button>
         </div>
       </div>
     `;
@@ -400,17 +379,7 @@ window.toggleAvailability = async function(key, currentStatus) {
   if (!auth?.currentUser) return alert("Sessão expirada. Faça login novamente.");
   
   try {
-    const isDefault = key.startsWith("def-");
-    const defaultItem = DEFAULT_PRODUCTS.find(p => p.id === key);
-
-    if (isDefault && defaultItem) {
-      await db.ref(`produtos/${key}`).set({
-        ...defaultItem,
-        disponivel: !currentStatus
-      });
-    } else {
-      await db.ref(`produtos/${key}/disponivel`).set(!currentStatus);
-    }
+    await db.ref(`produtos/${key}/disponivel`).set(!currentStatus);
   } catch (err) {
     alert("Erro ao alterar disponibilidade: " + err.message);
   }
