@@ -3,13 +3,6 @@ let productsList = [];
 let cart = {};
 let storeOpen = true;
 
-// Lista fixa das 3 marmitas padrão do projeto
-const DEFAULT_PRODUCTS = [
-  { id: "def-frango", nome: "Marmita de Frango", descricao: "Acompanha arroz, feijão e salada", preco: 18.00, categoria: "Marmitas", imagem: "https://placehold.co/800x500/f3f3f3/777?text=Marmita+Frango" },
-  { id: "def-calabresa", nome: "Marmita de Calabresa", descricao: "Acompanha arroz, feijão e salada", preco: 18.00, categoria: "Marmitas", imagem: "https://placehold.co/800x500/f3f3f3/777?text=Marmita+Calabresa" },
-  { id: "def-carne", nome: "Marmita de Carne", descricao: "Acompanha arroz, feijão e salada", preco: 20.00, categoria: "Marmitas", imagem: "https://placehold.co/800x500/f3f3f3/777?text=Marmita+Carne" }
-];
-
 const money = value => Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const $ = id => document.getElementById(id);
 
@@ -43,34 +36,25 @@ function initFirebase() {
       updateStoreStatus();
     });
 
-    // Escuta e mescla os produtos cadastrados com as 3 marmitas padrão
+    // Carrega APENAS os produtos cadastrados dinamicamente no Firebase
     db.ref("produtos").on("value", snap => {
       const data = snap.val() || {};
-      const combinedMap = {};
+      
+      productsList = Object.keys(data).map(key => ({
+        id: key,
+        ...data[key]
+      }));
 
-      DEFAULT_PRODUCTS.forEach(p => {
-        combinedMap[p.id] = { ...p, disponivel: true };
-      });
-
-      Object.keys(data).forEach(key => {
-        combinedMap[key] = {
-          ...combinedMap[key],
-          ...data[key],
-          id: key
-        };
-      });
-
-      productsList = Object.values(combinedMap);
       renderMenu();
     }, error => {
       console.error("Erro de leitura do Firebase:", error);
-      productsList = DEFAULT_PRODUCTS.map(p => ({ ...p, disponivel: true }));
+      productsList = [];
       renderMenu();
     });
 
   } catch (err) {
     console.error("Erro ao inicializar Firebase no cliente:", err);
-    productsList = DEFAULT_PRODUCTS.map(p => ({ ...p, disponivel: true }));
+    productsList = [];
     renderMenu();
   }
 }
